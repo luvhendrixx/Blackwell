@@ -56,9 +56,9 @@ bash: spicetify apply */
     --display-spicetify-banner-ascii: block; 
     --display-music-banner-ascii: none; 
 
-    --border-radius: 10px;
+    --border-radius: 4px;
     --border-width: 1px;
-    --border-style: outset; /* dotted | dashed | solid | double | groove | ridge | inset | outset */
+    --border-style: dashed; /* dotted | dashed | solid | double | groove | ridge | inset | outset */
     --border-transition: 0.2s ease; /* 'none' to disable  */
 
     --global-nav-margin-top: 50px; /* set to '0px' if you disabled window controls */
@@ -251,16 +251,17 @@ div:has(> .main-entityHeader-container) {
 }
 .encore-dark-theme,
 .encore-dark-theme .encore-base-set {
-    --background-base: var(--spice-main);
-    --background-highlight: rgba(var(--spice-rgb-highlight), 0.5);
-    --background-press: var(--spice-highlight);
-    --background-elevated-press: var(--spice-highlight);
+    --background-base: #000000;
+    --background-highlight: #000000;
+    --background-press: #000000;
+    --background-elevated-press: #000000;
     --essential-subdued: var(--spice-border-inactive);
     --decorative-subdued: var(--spice-accent-inactive);
-    --background-tinted-base: rgba(var(--spice-rgb-highlight), 0.25);
-    --background-tinted-highlight: rgba(var(--spice-rgb-highlight), 0.5);
-    --background-tinted-press: rgba(var(--spice-rgb-highlight), 1);
+    --background-tinted-base: #000000;
+    --background-tinted-highlight: #000000;
+    --background-tinted-press: #000000;
 }
+
 .encore-dark-theme .encore-bright-accent-set {
     --background-base: var(--spice-button-active) !important;
     --background-highlight: var(--spice-button-active) !important;
@@ -329,11 +330,10 @@ img[src*="equaliser"] {
 .main-contextMenu-menuItemButton:hover,
 .main-contextMenu-menuItemButton:not([aria-checked="true"]):focus,
 .main-card-card:hover,
-.main-card-card[data-context-menu-open="true"],
-[class*="listRow-isInteractive"]:hover,
-[class*="listRow-isInteractive"]:hover::after {
-    background-color: rgba(var(--spice-rgb-highlight), 0.5) !important;
+.main-card-card[data-context-menu-open="true"] {
+    border: 1px solid #ffffff !important;
 }
+
 .main-trackList-trackListRow.main-trackList-selected,
 .main-trackList-trackListRow.main-trackList-selected:hover {
     background-color: var(--spice-highlight) !important;
@@ -885,7 +885,7 @@ form .main-topBar-searchBar:placeholder-shown {
 }
 .player-controls__buttons,
 .main-nowPlayingBar-extraControls {
-    opacity: 0.25;
+    opacity: 0.7;
     transition: opacity var(--border-transition);
 }
 .player-controls__buttons:hover,
