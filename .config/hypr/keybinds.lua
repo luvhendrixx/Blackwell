@@ -6,20 +6,53 @@
 local home = os.getenv("HOME")
 local menu = "rofi -show drun"
 
+-- Omarchy-style universal clipboard via key state injection (not wtype: the
+-- held SUPER would merge into the injected chord). Down/up split avoids
+-- stuck synthetic key state in Hyprland's send_key_state.
+local function send_shortcut_once(mods, key)
+  return function()
+    hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down" }))
+    hl.timer(function()
+      hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up" }))
+    end, { timeout = 50, type = "oneshot" })
+  end
+end
+
+local function active_window_is_terminal()
+  local window = hl.get_active_window()
+  if not window then return false end
+  for _, tag in ipairs(window.tags or {}) do
+    if tag:gsub("%*$", "") == "terminal" then return true end
+  end
+  return false
+end
+
+local function universal_clipboard_shortcut(default_mods, default_key, terminal_mods, terminal_key)
+  return function()
+    if active_window_is_terminal() then
+      send_shortcut_once(terminal_mods, terminal_key)()
+    else
+      send_shortcut_once(default_mods, default_key)()
+    end
+  end
+end
+
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd(terminal)) 
-hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("pgrep -x rofi >/dev/null && pkill -x rofi || " .. menu)) -- Toggle launcher
-hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("qs ipc call wheel toggle")) -- Wheel launcher
+hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(terminal)) -- SUPER+Return: ghostty
+hl.bind(mainMod .. " + S", hl.dsp.workspace.toggle_special("scratchpad")) -- Scratchpad
+hl.bind(mainMod .. " + ALT + S", hl.dsp.window.move({ workspace = "special:scratchpad", follow = false })) -- Send to scratchpad
 hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(browser))
 hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 
 hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("hyprlock")) -- Lock screen
 
-hl.bind(mainMod .. " + GRAVE", hl.dsp.exec_cmd("qs ipc call powermenu toggle")) -- Power menu
+hl.bind(mainMod .. " + grave", hl.dsp.exec_cmd(home .. "/.config/hypr/scripts/terminal-toggle.sh")) -- Toggle terminal scratchpad
+hl.bind(mainMod .. " + SHIFT + GRAVE", hl.dsp.exec_cmd("qs ipc call powermenu toggle")) -- Power menu
 
 hl.bind(mainMod .. " + I", hl.dsp.exec_cmd("qs ipc call settings toggle")) -- Settings
 
-hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs -n -p ~/.config/quickshell/hyprquickpaper")) -- Wallpapers
+hl.bind(mainMod .. " + W", hl.dsp.window.close()) -- Close focused window
 
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = 0 })) -- Fullscreen
 
@@ -29,7 +62,7 @@ hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("python3 " .. home .. "/.config/43pr/
 
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notifications toggle")) -- Notifications
 
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call todo toggle"))  -- To-do
+hl.bind(mainMod .. " + C", universal_clipboard_shortcut("CTRL", "C", "CTRL SHIFT", "C")) -- Universal copy
 
 -- Mouse move/resize window
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
@@ -37,41 +70,25 @@ hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("qs ipc call bar toggle")) -- Toggle bar
 
--- Clipboard
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("pgrep -x rofi >/dev/null && pkill -x rofi || cliphist list | rofi -dmenu -p '' | cliphist decode | wl-copy"))
+hl.bind(mainMod .. " + V", universal_clipboard_shortcut("CTRL", "V", "CTRL SHIFT", "V")) -- Universal paste
 
--- Screenshot fullscreen
-hl.bind("Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
--- Screenshot area select
-hl.bind("SHIFT + Delete", hl.dsp.exec_cmd("sh -c 'file=" .. home .. "/Pictures/$(date +%s).png; grim -g \"$(slurp)\" \"$file\"; wl-copy < \"$file\"; qs ipc call screenshot notify \"$file\"'"))
+-- Screenshots via omasnap (toggles overlay; press again to dismiss)
+hl.bind("PRINT", hl.dsp.exec_cmd(home .. "/.local/bin/omasnap"))
+
+hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("qs ipc call notifications dismissOne")) -- Dismiss last notification
+
+hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("qs ipc call wheel toggle")) -- Wheel launcher
+hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("qs -n -p ~/.config/quickshell/hyprquickpaper")) -- Wallpaper selector
+
+-- Emoji picker: pick -> copy -> type into focused window
+hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("rofimoji --action copy type --typer wtype"))
 
 -- Keyboard layout
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("hyprctl switchxkblayout current next"))
 
--- Toggle float window, center and rezise
-hl.bind(mainMod .. " + Space", function()
-    hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
-
-    local w = hl.get_active_window()
-    if w ~= nil and w.floating then
-        local mon = hl.get_active_monitor()
-        if mon ~= nil then
-            local target_w = math.floor(mon.width * 0.7) 
-            local target_h = math.floor(mon.height * 0.7)
-
-            -- absolute resize (relative = false), not a delta
-            hl.dispatch(hl.dsp.window.resize({ x = target_w, y = target_h, relative = false }))
-
-            local mon_x = mon.x or 0
-            local mon_y = mon.y or 0
-            local target_x = mon_x + math.floor((mon.width - target_w) / 2)
-            local target_y = mon_y + math.floor((mon.height - target_h) / 2)
-
-            -- absolute move to the centered position
-            hl.dispatch(hl.dsp.window.move({ x = target_x, y = target_y, relative = false }))
-        end
-    end
-end)
+-- App launcher
+hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd("pgrep -x rofi >/dev/null && pkill -x rofi || " .. menu))
+hl.bind(mainMod .. " + SHIFT + F", hl.dsp.exec_cmd(fileManager)) -- Nautilus
 
 -- Gpu screen recorder
 hl.bind(mainMod .. " + R", hl.dsp.exec_cmd(
@@ -91,6 +108,14 @@ local function zoomfunction(value)
 end
 hl.bind(mainMod .. " + mouse_down", function() zoomfunction(-0.5) end, { repeating = true })
 hl.bind(mainMod .. " + mouse_up", function() zoomfunction(0.5) end, { repeating = true })
+hl.bind(mainMod .. " + slash", function()
+    local zoom = hl.get_config("cursor:zoom_factor") or 1
+    hl.config({ cursor = { zoom_factor = zoom + 1 } })
+end, { repeating = true })
+hl.bind(mainMod .. " + ALT + slash", function()
+    local zoom = hl.get_config("cursor:zoom_factor") or 1
+    hl.config({ cursor = { zoom_factor = math.max(1, zoom - 1) } })
+end, { repeating = true })
 
 --# Zoom with keypad
 hl.bind(mainMod .. " + code:82", function() zoomfunction(-0.3) end, { repeating = true })
@@ -105,6 +130,8 @@ hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
 hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "down" }))
 hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
 
 -- VERIFY: move active window within layout (old `movewindow` dispatcher).
 -- Confirmed pattern is hl.dsp.window.move({ workspace = N }) for sending to a
@@ -114,6 +141,10 @@ hl.bind(mainMod .. " + SHIFT + H", hl.dsp.window.move({ direction = "left" }))
 hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "down" }))
 hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "up" }))
 hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + left", hl.dsp.window.move({ direction = "left" }))
+hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + up", hl.dsp.window.move({ direction = "up" }))
+hl.bind(mainMod .. " + SHIFT + down", hl.dsp.window.move({ direction = "down" }))
 
 -- VERIFY: resize active window by pixel delta (old `resizeactive`, repeating
 -- while held via `binde`). Param names guessed as x/y - confirm with hyprctl eval.
@@ -134,6 +165,9 @@ end
 hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
 hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"), { locked = true, repeating = true })
 hl.bind("XF86AudioMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), { locked = true })
+
+hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("sh -c 'brightnessctl set 5%+ && qs ipc call brightnessosd show'"), { repeating = true, locked = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("sh -c 'brightnessctl set 5%- && qs ipc call brightnessosd show'"), { repeating = true, locked = true })
 
 hl.bind("XF86AudioPlay", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind("XF86AudioNext", hl.dsp.exec_cmd("playerctl next"), { locked = true })

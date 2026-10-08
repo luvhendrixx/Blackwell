@@ -2,6 +2,7 @@ import Quickshell
 
 ShellRoot {
     VolumeOsd {}
+    BrightnessOsd {}
     ScreenshotOsd {}
     SettingsWindow {}
     Notifications {}

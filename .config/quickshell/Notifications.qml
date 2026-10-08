@@ -149,6 +149,10 @@ PanelWindow {
         function close(): void { root.panelOpen = false; }
         function clear(): void { root.clearHistory(); }
         function dnd(): void { root.toggleDnd(); }
+        function dismissOne(): void {
+            const arr = server.trackedNotifications;
+            if (arr.length > 0) arr[arr.length - 1].dismiss();
+        }
     }
 
     FileView {
