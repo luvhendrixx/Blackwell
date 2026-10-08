@@ -27,7 +27,7 @@ hl.window_rule({
 
 hl.window_rule({
     match = { class = ".*" },
-    opacity = "1.0 override",
+    opacity = "0.9 override",
 })
 
 hl.window_rule({
