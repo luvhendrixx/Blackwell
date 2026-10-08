@@ -36,10 +36,12 @@ case "$ESP" in
     */EFI) ESP="${ESP%/EFI}" ;;
 esac
 
-[ -d "$ESP/EFI" ] || die "$ESP does not look like an ESP mount point (no $ESP/EFI).
-    Pass the mount point, e.g. ESP=/boot or ESP=/efi."
-
-mkdir -p "$DEST_BOOT" || die "could not create $DEST_BOOT"
+# Probe as root: an ESP mounted with dmask=0077 (mkfs.vfat default) is not
+# readable by the invoking user, so a plain `[ -d ]` fails on a perfectly
+# good ESP. sudo is already required for everything else in this script.
+sudo test -d "$ESP/EFI" || sudo mkdir -p "$DEST_BOOT" \
+    || die "$ESP does not look like an ESP mount point (no $ESP/EFI, and
+       could not create it). Pass the mount point, e.g. ESP=/boot or ESP=/efi."
 # Allow the caller (install.sh) to pass a machine-adjusted config
 LIMINE_CONF="${REPO_LIMINE_CONF:-$REPO_DIR/limine/limine.conf}"
 [ -f "$LIMINE_CONF" ] || die "limine/limine.conf missing from the repo"
@@ -56,14 +58,15 @@ sudo cp "$REPO_DIR/limine/wallpaper.jpg" "$DEST_BOOT/wallpaper.jpg"
 # manages it, and Limine also finds it there for the EFI/BOOT fallback binary.
 # A second copy under EFI/BOOT goes stale and makes Limine warn about
 # conflicting configs, then load the stale one (often an empty menu).
-if [ -f "$ESP/limine.conf" ]; then
+if sudo test -f "$ESP/limine.conf"; then
     sudo cp "$ESP/limine.conf" "$ESP/limine.conf.bak.$(date +%Y%m%d-%H%M)"
 fi
 sudo cp "$LIMINE_CONF" "$ESP/limine.conf"
 
-# Remove the stale copies that shadow it.
+# Remove the stale copies that shadow it. Probe with sudo for the same
+# dmask reason as above, otherwise every stray looks absent and is skipped.
 for stray in "$DEST_BOOT/limine.conf" "$ESP/EFI/limine/limine.conf" "$ESP/boot/limine.conf"; do
-    if [ -f "$stray" ]; then
+    if sudo test -f "$stray"; then
         warn "Removing conflicting Limine config: $stray"
         sudo rm -f "$stray"
     fi
