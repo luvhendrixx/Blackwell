@@ -58,10 +58,32 @@ sudo cp "$REPO_DIR/limine/wallpaper.jpg" "$DEST_BOOT/wallpaper.jpg"
 # manages it, and Limine also finds it there for the EFI/BOOT fallback binary.
 # A second copy under EFI/BOOT goes stale and makes Limine warn about
 # conflicting configs, then load the stale one (often an empty menu).
+# Carry the existing boot entries across. The repo template deliberately ships
+# with no entries (limine-entry-tool generates them), so a plain cp leaves a
+# themed menu with nothing to boot. Entries are the block starting at the first
+# line beginning with '/' at column 0; everything above it is theme/settings.
+tmp_conf=$(mktemp)
 if sudo test -f "$ESP/limine.conf"; then
     sudo cp "$ESP/limine.conf" "$ESP/limine.conf.bak.$(date +%Y%m%d-%H%M)"
+    sudo cat "$ESP/limine.conf" > "$tmp_conf.old" 2>/dev/null
+    entry_block=$(sed -n '/^[^[:space:]]/,$ { /^\//,$p }' "$tmp_conf.old")
+    if [ -n "$entry_block" ]; then
+        say "Preserving existing boot entries ($(grep -c '^/' <<< "$entry_block") top-level)"
+        cp "$LIMINE_CONF" "$tmp_conf.new"
+        { cat "$tmp_conf.new"; printf '\n'; printf '%s\n' "$entry_block"; } > "$tmp_conf"
+        sudo cp "$tmp_conf" "$ESP/limine.conf"
+    else
+        warn "No boot entries found on the ESP -- menu will be empty until"
+        warn "you run: sudo limine-mkinitcpio"
+        sudo cp "$LIMINE_CONF" "$ESP/limine.conf"
+    fi
+    rm -f "$tmp_conf.old"
+else
+    warn "No existing $ESP/limine.conf -- menu will be empty until you run:"
+    warn "  sudo limine-mkinitcpio"
+    sudo cp "$LIMINE_CONF" "$ESP/limine.conf"
 fi
-sudo cp "$LIMINE_CONF" "$ESP/limine.conf"
+rm -f "$tmp_conf" "$tmp_conf.new"
 
 # Remove the stale copies that shadow it. Probe with sudo for the same
 # dmask reason as above, otherwise every stray looks absent and is skipped.
