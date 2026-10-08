@@ -1,152 +1,99 @@
-<div align="center">
+# dotfiles
 
-## Hyprland Setup by 43pr メ
+Arch Linux + Hyprland (Lua config) + a Quickshell macOS-style shell.
+Everything in this repo is the single source of truth: `~/.config/*` and
+`~/.zshrc` are symlinks into `dotfiles/`, so editing either side edits the
+same file.
 
-A clean and simple Hyprland setup focused on practical keybinds, productivity, and easy to customize.
-
-![Hyprland](https://img.shields.io/badge/Hyprland-0.56.2-8b9aaf?style=for-the-badge&labelColor=101418)
-![GitHub repo size](https://img.shields.io/github/repo-size/43PR/dotfiles?style=for-the-badge&labelColor=101418&color=8b9aaf)
-[![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Finvites%2FHQwU9SzHj%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&style=for-the-badge&logo=discord&logoColor=ffffff&label=discord&labelColor=101418&color=7289a8)](https://discord.gg/HQwU9SzHj)
-[![YouTube](https://img.shields.io/badge/youtube-subscribe-b05a63?style=for-the-badge&logo=youtube&logoColor=ffffff&labelColor=101418)](https://www.youtube.com/@43PR2)
-[![Ko-Fi donate](https://img.shields.io/badge/donate-kofi?style=for-the-badge&logo=ko-fi&logoColor=ffffff&label=ko-fi&labelColor=101418&color=9a6570)](https://ko-fi.com/43pr)
-
-### **[Features](#features)  -  [Keybinds](#most-used-keybinds)  -  [Installation](#installation) -  [Updating](#updating)**
-
-</div>
-
-**v1.2.0**
-
-<img width="1920" height="1080" alt="v1 2 0" src="https://github.com/user-attachments/assets/3b4857bc-285a-473a-924c-be89dab714b9" />
-
-<img width="1920" height="1080" alt="1791338767" src="https://github.com/user-attachments/assets/d2b9999a-9939-410d-9980-11e97b448d78" />
-
-Wallpapers: https://wallhaven.cc/user/43pr
-
-## Features
-
-- **Top bar** - Customizing options, vertical bar, styles, calendar, controls for volume and media playback.
-- **Settings Menu** — System, network, bluetooth, display, audio, storage, themes, and more.
-- **Wallpaper picker & Dynamic Colors** — Custom wallpaper selector with automatic wallpaper-based color generation.
-- **Preset Themes** — Default Monochrome, Nord, Tokyo Night, etc, and easily create your own. 
-- **App Launcher** — **Rofi** Application search, clipboard history, and opacity control.
-- **Zsh + Starship** — Customizable shell with autosuggestions and history.
-- **Customizable Power Menu** —  Custom power menu. 
-- **Notes / To do** —  Custom quick Notes/To-do. 
-- **Hyprlock** — Custom lock screen.
-- **Spotify + Spicetify** — Custom theme based on **text - darkthemer**, (modified).
-- **Custom Scripts** — Scripts for workflow and system management.
-
-> All programs: [packages.txt](packages.txt)
-
-### Wallpaper Selector
-
-Just made some tweaks to it. Give it some love: [hyprquickpaper](https://github.com/iamsurjog/hyprquickpaper)
-
-## Most used keybinds
-
-> **You can modify keybinds using HyprMod**
-
-| Keybind                 | Action                    |
-| -----------             | ------------------------- |
-| `Super + T`             | Terminal                  |
-| `Super + Q`             | Close active window       |
-| `Super + D`             | Application launcher      |
-| `Super + Space`         | Toggle floating window    |
-| `Super + F`             | Toggle fullscreen         |
-| `Super + 1, 2, 3..`     | Change workspaces         |
-| `Super + Shift + 1, 2..`| Move window to workspace  |
-| `Super + E`             | File manager              |
-| `Super + B`             | Browser                   |
-| `Super + V`             | Clipboard history         |
-| `Super + S`             | Second launcher           |
-| `Super + I`             | Settings menu             |
-| `Super + W`             | Wallpaper selector        |
-| `Super + O`             | Switch opacity            |
-| `Super + Tab`           | Lock screen               |
-| `Super + Grave`         | Logout menu               |
-| `Super + Shift + W`     | Toggle bar                |
-| `Super + Mouse wheel`   | Zoom in/out               |
-| `Super + C`             | Notes/To-do               |
-| `Super + N`             | Notifications             |
-| `Delete`                | Screenshot fullscreen     |
-| `SHIFT + Delete`        | Screenshot area select    |
-
-> [!note]
->
-> **Move and resize windows with Super + left/right mouse drag.**
->
-> To close most quickshell apps just click outside or Esc key.
->
-> All keybinds: [.config/hypr/keybinds.lua](.config/hypr/keybinds.lua)
-
----
-## Installation 
-
-**READ ALL**
-
-Should work for Arch, Manjaro, EndeavourOS, CachyOS, etc. 
-
-This is mainly intended for a clean installation (existing configuration files that are being replaced will be backed up automatically).
-
-**First install git then use the next command and continue the installation until it's finished**
-
-```bash
-sudo pacman -S git   
+```
+.
+├── .config/                 # symlinked into ~/.config
+│   ├── hypr/                # Hyprland (hyprland.lua, keybinds.lua, look.lua, rules.lua, scripts/)
+│   ├── quickshell/          # shell.qml, Bar.qml, notifications, panels, wallpapers
+│   ├── 43pr/                # theme engine (light/dark toggle + theming)
+│   ├── nvim/                # LazyVim starter + keymaps
+│   ├── ghostty/ cava/ btop/ rofi/ fastfetch/ superfile/ matugen/
+│   ├── gtk-3.0/ gtk-4.0/    # cursor + icon theme settings
+│   └── ...
+├── home/.zshrc              # symlinked to ~/.zshrc (starship, zoxide, eza, plugins)
+├── limine/                  # macOS-style bootloader theme (limine.conf + wallpaper.jpg)
+├── packages-repo.txt        # official-repo packages
+├── packages-aur.txt         # AUR packages
+├── install.sh               # packages + symlinks + post-install
+├── install-limine.sh        # copy the bootloader theme to the ESP
+├── update.sh                # pull upstream changes
+└── README.md
 ```
 
-```bash
-git clone https://github.com/43PR/dotfiles.git
-cd dotfiles
-chmod +x install.sh
-./install.sh
-```
-
-After the installation finishes log out and back in.
-
-Dowload and move wallpapers to Pictures/Wallpapers
-
-> [!important]
-> **Do not move or delete the dotfiles repository after installation.**
->
-> This setup uses **symbolic links (symlinks)** that point to files inside the cloned repository. If you move or delete the repository, those symlinks will break.
->
-> If you relocate the repository, simply run:
->
-> ```bash
-> ./install.sh
-> ```
->
-> The installer will automatically update the existing symlinks to point to the new location.
-
----
-## Updating
-
-Pull the latest changes, then run the updater from inside the repository:
+## Install (new machine)
 
 ```bash
-git pull
-./update.sh
+git clone git@github.com:luvhendrixx/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./install.sh            # packages, symlinks, keyd, cursor/icon defaults
+./install-limine.sh     # optional: bootloader theme
 ```
 
-Other options: `--dry-run` (preview changes), `--skip-packages`, `--skip-theme`.
+Then **log out and back in** (or reboot) so keyd, `XCURSOR_*` and the shell
+profile are live.
 
-Dotfiles are symlinked so, `git pull` updates your live configs directly.
+Useful flags: `./install.sh --dry-run`, `./install.sh --link-only`.
 
-You can check the reminders printed at the end of the run.
+## Highlights
 
-> [!tip]
-> If any Quickshell (`.qml`) files changed in the pull, run:
->
-> ```bash
-> ./update.sh --restart-shell
-> ```
->
-> to restart Quickshell automatically.
+- **Hyprland** configured in Lua (`hyprland.lua` + split-out modules), dwindle layout,
+  dark-cream active window border, blur/vibrancy.
+- **Quickshell shell** — macOS-style bar (Apple logo, focused-app name, File/Edit/
+  View/Window/Help menus, translucent liquid-glass strip), notifications, power menu,
+  settings, wallpaper picker.
+- **Universal clipboard** — `SUPER+C` / `SUPER+V` use key-state injection with a
+  terminal-aware `CTRL+SHIFT` variant, matching Omarchy's approach.
+- **omasnap** — `PRINT` screenshot/annotation overlay; autosave disabled (copy first,
+  save on demand).
+- **Right Shift = Compose** via `keyd`, so xkb's missing `compose:rshift` works.
+- **Scratchpad** — `SUPER+S` toggle, `SUPER+ALT+S` send window; `SUPER+\`` toggles a
+  dedicated floating terminal.
+- **Brightness/volume OSDs** — brightness OSD mirrors the volume flyout.
+- **LazyVim** with `Ctrl+E` end-of-line, `Ctrl+W` new line below, `Ctrl+A` select all.
+- **Housekeeping** — `paccache-hook` prunes the pacman cache, `pacman-orphans.timer`
+  removes orphans weekly, `snap-pac` snapshots before/after transactions.
 
-> [!note]
-> 
-> Custom-gpu parts are specific to my hardware.
->
-> For issues with the wallpaper picker, you can clear the cache from the Storage page in Settings.
+## Keymap (the essentials)
 
+| Keys | Action |
+| --- | --- |
+| `SUPER + T` / `SUPER + Return` | Ghostty |
+| `SUPER + Q` / `SUPER + W` | Close window |
+| `SUPER + E` / `SUPER + SHIFT + F` | Files (Nautilus) |
+| `SUPER + B` | Browser (Zen) |
+| `SUPER + Space` | App launcher (rofi) |
+| `SUPER + D` | Wallpaper picker |
+| `SUPER + S` / `SUPER + ALT + S` | Scratchpad toggle / send window |
+| `SUPER + \`` | Floating terminal toggle |
+| `SUPER + ,` | Dismiss last notification |
+| `SUPER + .` | Emoji picker (copies + types) |
+| `SUPER + C` / `SUPER + V` | Universal copy / paste |
+| `SUPER + I` / `SUPER + N` | Settings / notifications |
+| `SUPER + F` / `SUPER + O` | Fullscreen / opacity |
+| `SUPER + H J K L` / arrows | Focus window |
+| `SUPER + SHIFT + H J K L` / arrows | Move window |
+| `SUPER + CTRL + H J K L` | Resize window |
+| `SUPER + 1…0` / `SUPER + SHIFT + 1…0` | Switch / move to workspace |
+| `SUPER + /` / `SUPER + ALT + /` | Zoom in / out |
+| `SUPER + SHIFT + X` | Quickshell wheel launcher |
+| `SUPER + SHIFT + E` | Exit session |
+| `SUPER + Tab` | Lock screen |
+| `SUPER + SHIFT + GRAVE` | Power menu |
+| `PRINT` | omasnap screenshot overlay |
+| Volume / Brightness keys | wpctl / brightnessctl (+ OSD) |
+| `Right Shift` | Compose (via keyd) |
 
+Full list: the Apple logo in the bar (or `~/.config/hypr/scripts/keymaps.sh`)
+opens a searchable rofi cheat sheet generated from `keybinds.lua`.
+
+## Notes
+
+- The Limine config carries this machine's `root=PARTUUID`; change it in
+  `limine/limine.conf` before installing on another machine.
+- Waybar was replaced by the Quickshell bar; there is no waybar config here.
+- Theme toggle: `SUPER + L` (43pr engine, light/dark).

@@ -3,11 +3,13 @@
 
 ---- MY PROGRAMS ----
 
+local home = os.getenv("HOME")
+
 mainMod    = "SUPER"
-terminal   = "kitty"
+terminal   = "ghostty"
 menu       = "rofi -show drun"
-fileManager = "thunar"
-browser    = "brave"
+fileManager = "nautilus"
+browser    = "zen-browser"
 
 ---- AUTOSTART ----
 
@@ -20,11 +22,13 @@ hl.on("hyprland.start", function()
 
     hl.exec_cmd("awww-daemon")
     hl.exec_cmd("sleep 2 && qs")
+    hl.exec_cmd(home .. "/.config/hypr/scripts/powerprofile-auto.sh")
 end)
 
 ---- ENVIRONMENT VARIABLES ----
 
-hl.env("XCURSOR_SIZE", "14")
+hl.env("XCURSOR_SIZE", "15")
+hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")
 hl.env("QT_QPA_PLATFORM", "wayland")
 hl.env("MOZ_ENABLE_WAYLAND", "1")
 
@@ -34,10 +38,13 @@ hl.config({
     input = {
         kb_layout = "us,latam",
         follow_mouse = 1,
-        sensitivity = 0.5,
+        sensitivity = 0.3,
+        repeat_rate = 40,
+        repeat_delay = 250,
         touchpad = {
             natural_scroll = false,
             tap_to_click = true,
+            scroll_factor = 0.5,
         },
     },
 })
@@ -65,5 +72,6 @@ require("keybinds")
 require("look")
 require("rules")
 
--- HyprMod managed settings
-require("hyprland-gui")
+-- HyprMod managed settings (disabled: it rebound keys to kitty/thunar,
+-- which were removed; bindings now live in keybinds.lua)
+-- require("hyprland-gui")

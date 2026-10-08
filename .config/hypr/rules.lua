@@ -7,14 +7,31 @@ hl.layer_rule({
     ignore_alpha = 0.15,
 })
 
+hl.layer_rule({
+    match = { namespace = "^omasnap$" },
+    no_anim = true,
+    animation = "none",
+})
+
+hl.layer_rule({
+    match = { namespace = "bar" },
+    blur = true,
+    ignore_alpha = 0.5,
+})
+
 -- Opacity rules: 90% for all windows except fullscreen
+hl.window_rule({
+    match = { class = "^(com.mitchellh.ghostty|ghostty|kitty|Alacritty|foot|wezterm)$" },
+    tag = "+terminal",
+})
+
 hl.window_rule({
     match = { class = ".*" },
     opacity = "1.0 override",
 })
 
 hl.window_rule({
-    match = { class = "kitty" },
+    match = { class = "com.mitchellh.ghostty" },
     suppress_event = "maximize",
 })
 

@@ -1,0 +1,13 @@
+hyprmod
+paccache-hook
+papirus-folders
+python-hyprland-config
+python-hyprland-monitors
+python-hyprland-schema
+python-hyprland-socket
+python-hyprland-state
+typora
+visual-studio-code-bin
+yay
+yay-debug
+zen-browser-bin
