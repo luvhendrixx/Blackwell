@@ -21,6 +21,8 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("/usr/lib/polkit-kde-authentication-agent-1")
 
     hl.exec_cmd("awww-daemon")
+    -- awww-daemon alone draws nothing; a fresh machine would boot black.
+    hl.exec_cmd(home .. "/.config/hypr/scripts/wallpaper-init.sh")
     hl.exec_cmd("sleep 2 && qs")
     hl.exec_cmd(home .. "/.config/hypr/scripts/powerprofile-auto.sh")
 end)
