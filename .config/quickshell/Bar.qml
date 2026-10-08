@@ -190,6 +190,65 @@ Scope {
         runner.running = true;
     }
 
+    // Toggle for bar pill transparency (double-click the bar background)
+    property bool pillsTransparent: false
+
+    // ── weather (wttr.in j1, refreshed every 15 min) ──
+    property string weatherGlyph: ""
+    property string weatherTemp: ""
+
+    Process {
+        id: weatherProc
+        running: true
+        command: ["curl", "-s", "wttr.in/?format=j1"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const j = JSON.parse(text);
+                    const c = j.current_condition[0];
+                    root.weatherTemp = c.temp_C + "°C";
+                    const code = parseInt(c.weatherCode);
+                    const sunny = "☀", partly = "⛅", cloud = "☁", fog = "🌫",
+                          rain = "🌦", showers = "🌧", snow = "🌨", storm = "⛈";
+                    let g = cloud;
+                    if (code === 113) g = sunny;
+                    else if (code === 116) g = partly;
+                    else if (code === 119 || code === 122) g = cloud;
+                    else if (code === 143 || code === 248 || code === 260) g = fog;
+                    else if ((code >= 176 && code <= 200) || (code >= 263 && code <= 282)) g = rain;
+                    else if (code === 185 || code === 227 || code === 230 || (code >= 323 && code <= 395)) g = snow;
+                    else if (code === 200 || code === 386 || code === 389 || code === 392 || code === 395) g = storm;
+                    else if (code >= 293 && code <= 359) g = showers;
+                    root.weatherGlyph = g;
+                } catch (e) { root.weatherGlyph = ""; }
+            }
+        }
+    }
+    Timer { interval: 900000; running: true; repeat: true; onTriggered: { weatherProc.running = false; weatherProc.running = true; } }
+
+    // Focused app name for the macOS-style menu row
+    property string activeAppName: ""
+
+    Process {
+        id: activeWinProc
+        running: true
+        command: ["hyprctl", "activewindow", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const j = JSON.parse(text);
+                    if (j.class && j.class !== "") {
+                        const last = j.class.split(".").pop();
+                        root.activeAppName = last.charAt(0).toUpperCase() + last.slice(1);
+                    } else {
+                        root.activeAppName = "";
+                    }
+                } catch (e) { root.activeAppName = ""; }
+            }
+        }
+    }
+    Timer { interval: 1000; running: true; repeat: true; onTriggered: { activeWinProc.running = false; activeWinProc.running = true; } }
+
     // ───────────────────────── Reusable components ─────────────────────────
 
     // Flows left→right on horizontal bars, top→bottom on vertical ones.
@@ -205,9 +264,15 @@ Scope {
         width: root.vertical ? root.panelThick : (lane ? lane.implicitWidth + 4 : 0)
         height: root.vertical ? (lane ? lane.implicitHeight + 4 : 0) : root.panelThick
         radius: root.barRadius
-        color: root.joined ? "transparent" : root.bgColor
+        color: root.pillsTransparent ? "transparent" : (root.joined ? "transparent" : root.bgColor)
         border.width: cfg.border && !root.joined ? 1 : 0
         border.color: root.borderColor
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: mouse => { mouse.accepted = false }
+            onDoubleClicked: root.pillsTransparent = !root.pillsTransparent
+        }
     }
 
     component Mod: Item {
@@ -379,6 +444,8 @@ Scope {
             exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.namespace: "bar-settings"
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+            Keys.onEscapePressed: root.settingsOpen = false
 
             Rectangle {
                 anchors.fill: parent
@@ -531,6 +598,7 @@ Scope {
             implicitHeight: root.vertical ? 0 : root.panelThick + root.effEdge
             color: "transparent"
             visible: root.barVisible
+            WlrLayershell.namespace: "bar"
 
             Item {
                 id: frame
@@ -546,10 +614,16 @@ Scope {
                 Rectangle {
                     visible: root.joined
                     anchors.fill: parent
-                    radius: root.barRadius
-                    color: root.bgColor
+                    radius: cfg.style === "strip" ? 12 : root.barRadius
+                    color: root.pillsTransparent ? "transparent" : root.bgColor
                     border.width: cfg.border ? 1 : 0
                     border.color: root.borderColor
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: mouse => { mouse.accepted = false }
+                        onDoubleClicked: root.pillsTransparent = !root.pillsTransparent
+                    }
                 }
 
                 // ── start section ──
@@ -563,22 +637,50 @@ Scope {
                         anchors.centerIn: parent
 
                         Mod {
-                            visible: cfg.showStats && !root.vertical
-                            baseSize: root.sizeCpuRam
-                            glyphSize: root.sizeCpuRam + 4
-                            vglyph: "\uDB81\uDE1A"
-                            text: "CPU " + root.cpuUsage + "%"
-                            vtext: ""
-                            color: root.vertical && root.cpuUsage >= 85 ? Theme.danger : Theme.text
+                            glyph: "\uf179"
+                            glyphSize: root.sizeClock + 2
+                            text: ""
+                            onClicked: mouse => root.settingsOpen = !root.settingsOpen
                         }
-                        Mod {
-                            visible: cfg.showStats && !root.vertical
-                            baseSize: root.sizeCpuRam
-                            glyphSize: root.sizeCpuRam + 4
-                            vglyph: "\uDB80\uDF5B"
-                            text: "RAM " + root.memPercent + "%"
-                            vtext: ""
-                            color: root.vertical && root.memPercent >= 85 ? Theme.danger : Theme.text
+
+                        Text {
+                            Layout.alignment: Qt.AlignCenter
+                            text: root.activeAppName
+                            color: Theme.text
+                            font.family: Theme.iconFont
+                            font.pixelSize: root.sizeClock
+                            font.bold: true
+                            renderType: Text.NativeRendering
+                            visible: text !== ""
+                        }
+
+                        RowLayout {
+                            Layout.alignment: Qt.AlignCenter
+                            Layout.leftMargin: 12
+                            spacing: 10
+                            Repeater {
+                                model: [
+                                    { label: "File", cmd: "nautilus" },
+                                    { label: "Edit", cmd: "cliphist list | rofi -dmenu -p '' | cliphist decode | wl-copy" },
+                                    { label: "View", cmd: "qs -n -p ~/.config/quickshell/hyprquickpaper" },
+                                    { label: "Window", cmd: "hyprctl dispatch togglespecialworkspace scratchpad" },
+                                    { label: "Help", cmd: "~/.config/hypr/scripts/keymaps.sh" }
+                                ]
+                                Text {
+                                    Layout.alignment: Qt.AlignCenter
+                                    text: modelData.label
+                                    color: Theme.text
+                                    font.family: Theme.iconFont
+                                    font.pixelSize: root.sizeClock
+                                    font.bold: true
+                                    renderType: Text.NativeRendering
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.run(modelData.cmd)
+                                    }
+                                }
+                            }
                         }
 
                         Item {
@@ -652,8 +754,8 @@ Scope {
                             id: clockMod
                             bold: true
                             baseSize: root.sizeClock
-                            text: Qt.formatDateTime(clk.date, "HH:mm")
-                            vtext: Qt.formatDateTime(clk.date, "HH") + "\n" + Qt.formatDateTime(clk.date, "mm")
+                            text: Qt.formatDateTime(clk.date, "h:mm AP")
+                            vtext: Qt.formatDateTime(clk.date, "h AP") + "\n" + Qt.formatDateTime(clk.date, "mm")
                             onClicked: mouse => {
                                 if (mouse.button === Qt.RightButton) {
                                     root.settingsOpen = !root.settingsOpen;
@@ -663,6 +765,15 @@ Scope {
                                 clockPanel.monthOffset = 0;
                                 clockPanel.calOpen = !clockPanel.calOpen;
                             }
+                        }
+
+                        Mod {
+                            id: weatherMod
+                            visible: root.weatherGlyph !== ""
+                            glyph: root.weatherGlyph
+                            glyphSize: root.sizeClock + 2
+                            text: ""
+                            onClicked: mouse => root.run("xdg-open 'https://wttr.in/'")
                         }
                     }
 
@@ -953,7 +1064,7 @@ Scope {
                             glyph: muted || vol <= 0 ? "\uDB81\uDF5F"
                                  : vol > 0.66 ? "\uDB81\uDD7E"
                                  : vol > 0.33 ? "\uDB81\uDD80" : "\uDB81\uDD7F"
-                            text: muted ? "Muted" : Math.round(vol * 100) + "%"
+                            text: ""
                             vtext: ""
                             color: muted ? Theme.danger : Theme.text
                             onScrolled: delta => {
@@ -975,8 +1086,8 @@ Scope {
                             glyphSize: root.sizeBatIcon
                             glyph: (root.batCharging ? "\uf0e7 " : "") + root.batIcon
                             vglyph: root.batIcon
-                            text: root.batPct + "%"
-                            vtext: root.batPct + ""
+                            text: ""
+                            vtext: ""
                             color: root.batLow ? Theme.danger
                                  : root.vertical && root.batCharging ? Theme.accent : Theme.text
                         }
