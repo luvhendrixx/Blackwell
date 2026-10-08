@@ -31,12 +31,13 @@ same file.
 ```bash
 git clone git@github.com:luvhendrixx/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh            # packages, symlinks, keyd, cursor/icon defaults
-./install-limine.sh     # optional: bootloader theme
+./install.sh
 ```
 
-Then **log out and back in** (or reboot) so keyd, `XCURSOR_*` and the shell
-profile are live.
+That single command: installs packages (repo + AUR), links every config,
+sets up keyd / cursor / icon defaults, **auto-detects your ESP mount point and
+root UUID**, deploys the themed Limine bootloader, registers it in firmware, and
+generates a boot entry for the installed kernel. Then reboot.
 
 Useful flags: `./install.sh --dry-run`, `./install.sh --link-only`.
 
@@ -100,22 +101,23 @@ registers a firmware boot entry (keeping the standard `EFI/BOOT` fallback path).
 
 ### Automatic kernel entries
 
-`limine-mkinitcpio-hook-git` (AUR) automates everything else:
+`install.sh` installs `limine-mkinitcpio-hook-git` (it's in `packages-aur.txt`)
+and runs the one-time setup:
 
 ```bash
-yay -S limine-mkinitcpio-hook-git kernel-modules-hook
-sudo limine-install                     # deploy + register managed Limine
-sudo limine-mkinitcpio -p linux-zen     # build kernel + write its boot entry
+sudo limine-install       # deploy + register the managed Limine EFI
+sudo limine-mkinitcpio    # build a UKI for the installed kernel + write its entry
 ```
 
 After that, every `pacman -S linux*` automatically adds/removes its Limine entry
 (pacman hooks: `80-limine-efi-deploy`, `90-limine-mkinitcpio-install/remove`), and
 `kernel-modules-hook` keeps the previous kernel if an upgrade fails.
-Config lives in `/etc/default/limine` (`KERNEL_CMDLINE`, `ENABLE_UKI`, …).
+Config lives in `/etc/default/limine` (`ESP_PATH`, `ENABLE_UKI`, `FIND_BOOTLOADERS`).
 
 The tool manages `$ESP/limine.conf` and preserves non-entry lines, so the wallpaper
 and `interface_*` colours survive regeneration. It also keeps a timestamped
-`limine.conf.old` backup.
+`limine.conf.old` backup. Keep exactly **one** `limine.conf` on the ESP (at its
+root) — a second copy under `EFI/BOOT/` goes stale.
 
 ## Notes
 

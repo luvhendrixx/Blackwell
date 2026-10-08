@@ -1,4 +1,5 @@
 hyprmod
+limine-mkinitcpio-hook-git
 paccache-hook
 papirus-folders
 python-hyprland-config
