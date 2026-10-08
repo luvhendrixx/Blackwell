@@ -57,10 +57,14 @@ if [ "$LINK_ONLY" = 0 ]; then
     # the leftovers to the AUR helper instead.
     strays=""
 
+    # Snapshot the sync databases once. Do NOT call pacman inside the read
+    # loop: it inherits the loop's stdin and swallows the remaining lines.
+    sync_db=$(pacman -Slq 2>/dev/null)
+
     aur_fallback_list() {
         grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" \
             | while read -r p; do
-                  pacman -Slq 2>/dev/null | grep -qxF "$p" || printf '%s\n' "$p"
+                  printf '%s\n' "$sync_db" | grep -qxF "$p" || printf '%s\n' "$p"
               done
     }
 
