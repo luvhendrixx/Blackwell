@@ -10,7 +10,11 @@ hl.config({
             bottom = 8,
             left = 8,
         },
-        border_size = 0,
+        border_size = 2,
+        col = {
+            active_border = "rgba(d9cdb2ee)",
+            inactive_border = "rgba(3a3a3aaa)",
+        },
         resize_on_border = true,
         allow_tearing = false,
         layout = "dwindle",
@@ -19,8 +23,8 @@ hl.config({
         rounding = 8,
         blur = {
             enabled = true,
-            size = 5,
-            passes = 1,
+            size = 6,
+            passes = 2,
             vibrancy = 0.2,
         },
         shadow = {

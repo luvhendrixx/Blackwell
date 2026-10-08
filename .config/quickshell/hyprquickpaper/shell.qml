@@ -136,7 +136,12 @@ PanelWindow {
         cacheBuffer: 400 * main.ui
         boundsBehavior: Flickable.StopAtBounds
 
-        property int selectedIndex: main.startPosition
+        // Selection is always the tile centered in the viewport, so keyboard
+        // and mouse navigation always agree on the highlight.
+        readonly property int selectedIndex: {
+            if (count <= 0) return 0
+            return list.clampIndex(Math.round(contentX / step))
+        }
 
         readonly property real tileHeight: main.refHeight * main.ui
         readonly property real tileWidth: (main.refWidth / Math.max(1, configs.number_of_pictures) - 10) * main.ui
@@ -157,20 +162,26 @@ PanelWindow {
 
         function centerOnStart() {
             if (userMoved || count <= 0 || configs.number_of_pictures <= 0) return
-            selectedIndex = clampIndex(main.startPosition)
-            contentX = selectedIndex * step
+            contentX = clampIndex(main.startPosition) * step
             ready = true
         }
 
         function activateCurrent() {
-            Quickshell.execDetached(["bash", Quickshell.shellPath("commands.sh"), folderModel.get(selectedIndex, "filePath")])
+            if (count <= 0) return
+            const idx = clampIndex(Math.round(contentX / step))
+            Quickshell.execDetached(["bash", Quickshell.shellPath("commands.sh"), folderModel.get(idx, "filePath")])
             Qt.quit()
         }
 
         function moveSelection(delta, speedMultiplier) {
             anim.velocity = main.speed * speedMultiplier
-            selectedIndex = clampIndex(selectedIndex + delta)
-            ensureVisibleAnimated(selectedIndex)
+            const idx = count > 0 ? Math.round(contentX / step) + delta : 0
+            contentX = clampIndex(idx) * step
+        }
+
+        onMovementEnded: {
+            // Snap the view to the nearest tile so selection stays exact.
+            contentX = clampIndex(Math.round(contentX / step)) * step
         }
 
         onCountChanged: centerOnStart()
@@ -273,7 +284,7 @@ PanelWindow {
                     anchors.fill: parent
                     visible: delegateItem.active
                     color: "transparent"
-                    border.width: Math.max(1, Math.round(2 * main.ui))
+                    border.width: Math.max(2, Math.round(4 * main.ui))
                     border.color: configs.border_color
                     transform: Shear { xFactor: main.skewFactor }
                 }
@@ -282,15 +293,21 @@ PanelWindow {
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: list.ready
-                onEntered: { list.userMoved = true; list.selectedIndex = index }
+                onEntered: { } // hover no longer drives selection; use arrow keys
                 onClicked: list.activateCurrent()
                 onWheel: function(wheel) { list.flick(-wheel.angleDelta.y * 8, 0); wheel.accepted = true }
             }
         }
 
         Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Space) {
+            if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                 activateCurrent()
+            } else if (event.key === Qt.Key_Left) {
+                list.userMoved = true
+                list.moveSelection(-1, 1)
+            } else if (event.key === Qt.Key_Right) {
+                list.userMoved = true
+                list.moveSelection(1, 1)
             } else if (event.key === Qt.Key_W || event.key === Qt.Key_Escape) {
                 Qt.quit()
             } else {

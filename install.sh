@@ -1,432 +1,152 @@
 #!/usr/bin/env bash
-
-set -uo pipefail
-
-# 43PR/dotfiles installer
-# Arch-compatible Linux + Hyprland
+#
+# luvhendrixx/dotfiles — installer
+# Arch Linux + Hyprland (Lua config) + Quickshell desktop
 #
 # Usage:
-#   ./install.sh
+#   ./install.sh              # install packages and link configs
+#   ./install.sh --link-only  # only (re)create the config symlinks
+#   ./install.sh --dry-run    # print what would happen
 #
-# This script:
-#   1. Verifies that the system is Arch-based
-#   2. Detects the available package manager(s)
-#   3. Splits packages.txt into "official repo" vs "AUR-only" and
-#      installs each with the right tool, so a single AUR-only or
-#      unresolvable name never aborts the whole install
-#   4. Symlinks this repository's configuration into ~/.config, so the
-#      repo is the only copy of each file — editing either path edits
-#      the same file, and update.sh never needs to sync or diff anything
-#   5. Generates the initial theme
-#
-# Supported package managers:
-#   - pacman       (official repos: Arch, Manjaro, EndeavourOS, CachyOS, etc.)
-#   - paru / yay   (AUR helpers, optional but recommended)
+set -uo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$REPO_DIR/.config"
 CONFIG_DIR="$HOME/.config"
-BACKUP_ROOT="$HOME/.config-backups"
-TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
-BACKUP_DIR="$BACKUP_ROOT/$TIMESTAMP"
+DRY_RUN=0
+LINK_ONLY=0
 
-# Files written by theme.py at runtime. These are copied once (so they
-# exist before the first boot), 
-GENERATED_FILES=(
-    "kitty/matugen.conf"
-    "hypr/hyprlock-colors.conf"
-    "gtk-3.0/colors.css"
-    "gtk-4.0/colors.css"
-    "gtk-3.0/settings.ini"
-    "gtk-4.0/settings.ini"
-    "rofi/colors.rasi"
-    "quickshell/Theme.qml"
-)
-# --------------------------------------------------
-# Colors / output
-# --------------------------------------------------
-
-info() {
-    printf '\n\033[1;34m[INFO]\033[0m %s\n' "$1"
-}
-
-success() {
-    printf '\n\033[1;32m[DONE]\033[0m %s\n' "$1"
-}
-
-warning() {
-    printf '\n\033[1;33m[WARN]\033[0m %s\n' "$1"
-}
-
-error() {
-    printf '\n\033[1;31m[ERROR]\033[0m %s\n' "$1" >&2
-}
-
-# --------------------------------------------------
-# Checks
-# --------------------------------------------------
-
-if [[ "${EUID}" -eq 0 ]]; then
-    error "Do not run this script as root."
-    exit 1
-fi
-
-if [[ ! -f /etc/os-release ]]; then
-    error "Cannot determine the operating system."
-    exit 1
-fi
-
-# shellcheck disable=SC1091
-source /etc/os-release
-
-# Arch-compatible distributions normally identify themselves
-# through ID_LIKE=arch or ID=arch.
-if [[ "${ID:-}" != "arch" && "${ID_LIKE:-}" != *arch* ]]; then
-    error "This installer is intended for Arch-compatible Linux distributions."
-    error "Detected: ${PRETTY_NAME:-unknown}"
-    exit 1
-fi
-
-if ! command -v sudo >/dev/null 2>&1; then
-    error "sudo is required."
-    exit 1
-fi
-
-if ! command -v pacman >/dev/null 2>&1; then
-    error "pacman was not found. This installer requires an Arch-based system."
-    exit 1
-fi
-
-if [[ ! -d "$SRC" ]]; then
-    error "No .config directory found at $SRC"
-    exit 1
-fi
-
-# --------------------------------------------------
-# Package manager detection
-# --------------------------------------------------
-
-PACKAGE_FILE="$REPO_DIR/packages.txt"
-
-if [[ ! -f "$PACKAGE_FILE" ]]; then
-    error "packages.txt not found."
-    exit 1
-fi
-
-AUR_HELPER=""
-if command -v paru >/dev/null 2>&1; then
-    AUR_HELPER="paru"
-elif command -v yay >/dev/null 2>&1; then
-    AUR_HELPER="yay"
-fi
-
-info "Detected distribution: ${PRETTY_NAME:-unknown}"
-
-if [[ -n "$AUR_HELPER" ]]; then
-    info "AUR helper available: $AUR_HELPER"
-else
-    info "No AUR helper found. Bootstrapping yay..."
-
-    if sudo pacman -S --needed --noconfirm git base-devel; then
-        YAY_BUILD_DIR="$(mktemp -d)"
-
-        if git clone https://aur.archlinux.org/yay.git "$YAY_BUILD_DIR/yay" \
-            && (cd "$YAY_BUILD_DIR/yay" && makepkg -si --noconfirm); then
-            AUR_HELPER="yay"
-            success "yay installed."
-        else
-            warning "Failed to build/install yay automatically."
-            warning "You can install one manually (paru or yay) and re-run this script."
-        fi
-
-        rm -rf "$YAY_BUILD_DIR"
-    else
-        warning "Failed to install git/base-devel; cannot bootstrap an AUR helper."
-        warning "AUR-only packages will be listed but skipped."
-    fi
-fi
-
-# --------------------------------------------------
-# Packages: split into official-repo vs AUR-only
-# --------------------------------------------------
-
-mapfile -t PACKAGES < <(
-    grep -vE '^[[:space:]]*(#|$)' "$PACKAGE_FILE"
-)
-
-OFFICIAL_PACKAGES=()
-AUR_PACKAGES=()
-UNKNOWN_PACKAGES=()
-
-if [[ "${#PACKAGES[@]}" -eq 0 ]]; then
-    warning "packages.txt does not contain any packages."
-else
-    info "Resolving packages against official repos..."
-
-    for pkg in "${PACKAGES[@]}"; do
-        if pacman -Si "$pkg" >/dev/null 2>&1; then
-            OFFICIAL_PACKAGES+=("$pkg")
-        elif [[ -n "$AUR_HELPER" ]] && "$AUR_HELPER" -Si "$pkg" >/dev/null 2>&1; then
-            AUR_PACKAGES+=("$pkg")
-        else
-            UNKNOWN_PACKAGES+=("$pkg")
-        fi
-    done
-
-    if [[ "${#OFFICIAL_PACKAGES[@]}" -gt 0 ]]; then
-        info "Installing official-repo packages..."
-        if sudo pacman -Syu --needed --noconfirm "${OFFICIAL_PACKAGES[@]}"; then
-            success "Official-repo packages installed."
-        else
-            warning "pacman reported an error installing one or more official-repo packages. Continuing anyway."
-        fi
-    fi
-
-    if [[ "${#AUR_PACKAGES[@]}" -gt 0 ]]; then
-        if [[ -n "$AUR_HELPER" ]]; then
-            info "Installing AUR packages with $AUR_HELPER: ${AUR_PACKAGES[*]}"
-            if "$AUR_HELPER" -S --needed --noconfirm "${AUR_PACKAGES[@]}"; then
-                success "AUR packages installed."
-            else
-                warning "$AUR_HELPER reported an error installing one or more AUR packages. Continuing anyway."
-            fi
-        fi
-    fi
-
-    if [[ "${#UNKNOWN_PACKAGES[@]}" -gt 0 ]]; then
-        warning "Could not resolve the following package(s) in any repo: ${UNKNOWN_PACKAGES[*]}"
-        warning "Check the name with 'pacman -Ss <name>' or https://aur.archlinux.org, then fix packages.txt."
-    fi
-fi
-
-# --------------------------------------------------
-# Default shell
-# --------------------------------------------------
-
-if [[ -x /bin/zsh ]]; then
-    if [[ "$SHELL" != "/bin/zsh" ]]; then
-        info "Setting Zsh as the default shell..."
-
-        if chsh -s /bin/zsh; then
-            success "Default shell changed to Zsh."
-            warning "Log out and back in for the shell change to take effect."
-        else
-            warning "Failed to change the default shell to Zsh."
-        fi
-    else
-        info "Zsh is already the default shell."
-    fi
-else
-    warning "Zsh is not installed; skipping default shell configuration."
-fi
-
-# --------------------------------------------------
-# Link dotfiles (symlinked — the repo is the only copy)
-# --------------------------------------------------
-
-info "Linking dotfiles..."
-
-mkdir -p "$CONFIG_DIR"
-
-is_generated() {
-    local rel="$1" g
-    for g in "${GENERATED_FILES[@]}"; do
-        [[ "$rel" == "$g" ]] && return 0
-    done
-    return 1
-}
-
-LINK_FAILED=0
-LINKED_COUNT=0
-BACKED_UP_COUNT=0
-
-while IFS= read -r -d '' src; do
-    rel="${src#"$SRC"/}"
-
-    is_generated "$rel" && continue
-
-    dest="$CONFIG_DIR/$rel"
-    mkdir -p "$(dirname "$dest")"
-
-    if [[ -L "$dest" ]]; then
-        # Already a symlink (e.g. re-running install.sh) — repoint it in
-        # case the repo was moved or cloned to a new path.
-        ln -sfn "$src" "$dest"
-    elif [[ -e "$dest" ]]; then
-        # A real file/dir is in the way: back it up, then replace with a link.
-        mkdir -p "$BACKUP_DIR/config/$(dirname "$rel")"
-        mv "$dest" "$BACKUP_DIR/config/$rel"
-        BACKED_UP_COUNT=$((BACKED_UP_COUNT + 1))
-        ln -s "$src" "$dest"
-    else
-        ln -s "$src" "$dest"
-    fi
-
-    if [[ -L "$dest" && "$(readlink -f "$dest")" == "$(readlink -f "$src")" ]]; then
-        LINKED_COUNT=$((LINKED_COUNT + 1))
-    else
-        LINK_FAILED=1
-        error "Failed to link $rel"
-    fi
-done < <(find "$SRC" \( -type f -o -type l \) -not -path '*/.git/*' -print0)
-
-# ~/.zshrc is installed from .config/.zshrc but lives outside ~/.config
-if [[ -f "$SRC/.zshrc" ]]; then
-    if [[ -e "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
-        mkdir -p "$BACKUP_DIR/home"
-        mv "$HOME/.zshrc" "$BACKUP_DIR/home/.zshrc"
-        BACKED_UP_COUNT=$((BACKED_UP_COUNT + 1))
-    fi
-    ln -sfn "$SRC/.zshrc" "$HOME/.zshrc"
-    success "Linked ~/.zshrc."
-fi
-
-# Generated files: copy once so configs that `include`/`source`/`@import`
-# them don't fail to parse before the first `theme apply` runs.
-for g in "${GENERATED_FILES[@]}"; do
-    [[ -f "$SRC/$g" ]] || continue
-    dest="$CONFIG_DIR/$g"
-    if [[ ! -e "$dest" || -L "$dest" ]]; then
-        # Fresh install, or a stale symlink from an older version of this
-        # script — replace with a real, independent copy.
-        [[ -L "$dest" ]] && rm -f "$dest"
-        mkdir -p "$(dirname "$dest")"
-        cp "$SRC/$g" "$dest"
-    fi
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run)   DRY_RUN=1 ;;
+        --link-only) LINK_ONLY=1 ;;
+        -h|--help)   sed -n '2,12p' "$0"; exit 0 ;;
+    esac
 done
 
-if [[ "$LINK_FAILED" -eq 1 ]]; then
-    error "One or more files failed to link. See errors above."
+say()  { printf '\033[1;34m::\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
+die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
+
+run() { if [ "$DRY_RUN" = 1 ]; then echo "  would run: $*"; else "$@"; fi; }
+
+# ── 1. sanity checks ────────────────────────────────────────────────────────
+[ "$(uname -s)" = "Linux" ] || die "Linux only."
+if [ -e /etc/arch-release ] || [ -e /etc/endeavouros-release ]; then
+    say "Arch-based system detected"
 else
-    success "Dotfiles linked ($LINKED_COUNT file(s))."
+    warn "This dotfiles set targets Arch Linux; continuing anyway."
 fi
 
-if [[ "$BACKED_UP_COUNT" -gt 0 ]]; then
-    info "Replaced $BACKED_UP_COUNT existing file(s) with symlinks; originals saved to:"
-    printf '  %s\n' "$BACKUP_DIR"
-fi
+command -v pacman >/dev/null || die "pacman not found."
+command -v git    >/dev/null || die "git not found."
 
-# --------------------------------------------------
-# Papirus folder color
-# --------------------------------------------------
-
-if [[ -n "$AUR_HELPER" ]]; then
-    info "Installing Papirus folders..."
-
-    if "$AUR_HELPER" -S --needed --noconfirm papirus-folders; then
-        if papirus-folders -C white; then
-            success "Papirus folders set to white."
-        else
-            warning "papirus-folders was installed, but setting the folder color failed."
-        fi
+# ── 2. packages ─────────────────────────────────────────────────────────────
+if [ "$LINK_ONLY" = 0 ]; then
+    if command -v yay >/dev/null; then
+        AUR_HELPER=yay
+    elif command -v paru >/dev/null; then
+        AUR_HELPER=paru
     else
-        warning "Failed to install papirus-folders."
+        AUR_HELPER=""
     fi
-else
-    warning "No AUR helper available; skipping papirus-folders."
+
+    if [ -f "$REPO_DIR/packages-repo.txt" ]; then
+        say "Installing official-repo packages"
+        # shellcheck disable=SC2046
+        run sudo pacman -S --needed --noconfirm $(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" | tr '\n' ' ')
+    fi
+
+    if [ -n "$AUR_HELPER" ] && [ -f "$REPO_DIR/packages-aur.txt" ]; then
+        say "Installing AUR packages with $AUR_HELPER"
+        # shellcheck disable=SC2046
+        run "$AUR_HELPER" -S --needed --noconfirm $(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-aur.txt" | tr '\n' ' ')
+    elif [ -f "$REPO_DIR/packages-aur.txt" ]; then
+        warn "No AUR helper found; install packages-aur.txt manually."
+    fi
+
+    # Optional extras not in the package lists
+    say "Ensuring helper tools are present"
+    run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick
 fi
 
-# --------------------------------------------------
-# User directories
-# --------------------------------------------------
+# ── 3. symlink configs ──────────────────────────────────────────────────────
+say "Linking configs from $SRC into $CONFIG_DIR"
+mkdir -p "$CONFIG_DIR"
 
-info "Creating user directories..."
+link_one() {
+    local rel="$1"
+    local src="$SRC/$rel"
+    local dst="$CONFIG_DIR/$rel"
 
-mkdir -p "$HOME/Pictures"
-mkdir -p "$HOME/Pictures/Wallpapers"
+    [ -e "$src" ] || return 0
+    mkdir -p "$(dirname "$dst")"
 
-success "Pictures and Wallpapers directories created."
+    if [ -L "$dst" ]; then
+        local current
+        current="$(readlink "$dst")"
+        [ "$current" = "$src" ] && return 0
+        run rm "$dst"
+    elif [ -e "$dst" ]; then
+        local backup="$dst.pre-dotfiles"
+        warn "$dst exists — moving to $backup"
+        run mv "$dst" "$backup"
+    fi
 
-# --------------------------------------------------
-# Enable user audio services
-# --------------------------------------------------
+    run ln -s "$src" "$dst"
+    echo "  linked $rel"
+}
 
-if command -v systemctl >/dev/null 2>&1; then
-    info "Enabling PipeWire..."
+for entry in "$SRC"/*; do
+    [ -e "$entry" ] || continue
+    link_one "$(basename "$entry")"
+done
 
-    systemctl --user enable --now pipewire.service
-    systemctl --user enable --now pipewire-pulse.service
-    systemctl --user enable --now wireplumber.service
-
-    success "PipeWire configured."
-else
-    warning "systemctl was not found; skipping PipeWire service setup."
+# Home-level dotfiles
+if [ -d "$REPO_DIR/home" ]; then
+    say "Linking home dotfiles"
+    for f in "$REPO_DIR/home"/.*; do
+        case "$f" in */.|*/..) continue ;; esac
+        [ -f "$f" ] || continue
+        name="$(basename "$f")"
+        [ -L "$HOME/$name" ] && continue
+        [ -e "$HOME/$name" ] && run mv "$HOME/$name" "$HOME/$name.pre-dotfiles"
+        run ln -s "$f" "$HOME/$name"
+        echo "  linked ~/$name"
+    done
 fi
 
-# --------------------------------------------------
-# Enable system services
-# --------------------------------------------------
-
-if command -v systemctl >/dev/null 2>&1; then
-    if pacman -Qi power-profiles-daemon >/dev/null 2>&1; then
-        info "Enabling power-profiles-daemon..."
-
-        if sudo systemctl enable --now power-profiles-daemon.service; then
-            success "power-profiles-daemon enabled."
-        else
-            warning "Failed to enable power-profiles-daemon."
-        fi
+# ── 4. post-install steps ───────────────────────────────────────────────────
+if [ "$DRY_RUN" = 0 ]; then
+    say "Enabling keyd (Right Shift = compose key)"
+    if [ -f /etc/keyd/default.conf ]; then
+        run sudo systemctl enable --now keyd
     else
-        warning "power-profiles-daemon is not installed; the Power page will not work."
+        printf '[ids]\n*\n\n[main]\nrightshift = compose\n' \
+            | run sudo tee /etc/keyd/default.conf >/dev/null
+        run sudo systemctl enable --now keyd
     fi
+
+    say "Enabling pacman housekeeping"
+    run sudo systemctl enable --now paccache-hook.service 2>/dev/null
+    run sudo systemctl enable --now pacman-orphans.timer 2>/dev/null
+
+    say "Setting cursor + icon defaults"
+    run gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Ice'
+    run gsettings set org.gnome.desktop.interface cursor-size 15
+    run gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
+    run xdg-mime default org.gnome.Nautilus.desktop inode/directory
 fi
 
-# --------------------------------------------------
-# Permissions
-# --------------------------------------------------
-#
-# Scripts are now symlinks into the repo, so chmod must target the repo's
-# real files — a symlink's own permission bits are irrelevant on Linux,
-# what matters is the target's. `find -type f` on ~/.config would no
-# longer even match these paths, since a symlink is type l, not type f.
+# ── 5. done ─────────────────────────────────────────────────────────────────
+cat <<'EOF'
 
-info "Setting executable permissions on shell scripts..."
+Setup complete.
 
-find "$SRC" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} \;
-
-success "Shell script permissions configured."
-
-# --------------------------------------------------
-# Initial theme (generates the files the configs include)
-# --------------------------------------------------
-
-if command -v python3 >/dev/null 2>&1; then
-    info "Generating initial theme..."
-    python3 "$CONFIG_DIR/43pr/bin/theme.py" apply \
-        || warning "Initial theme generation failed."
-else
-    warning "python3 not found; skipping initial theme generation. Configs will use the committed fallback colors until you install python3 and run 'theme apply'."
-fi
-
-# --------------------------------------------------
-# Finish
-# --------------------------------------------------
-
-printf '\n'
-printf '\033[1;32m========================================\033[0m\n'
-printf '\033[1;32m       43PR Hyprland Setup Ready       \033[0m\n'
-printf '\033[1;32m========================================\033[0m\n'
-printf '\n'
-
-printf 'Distribution:  %s\n' "${PRETTY_NAME:-unknown}"
-printf 'AUR helper:    %s\n' "${AUR_HELPER:-none}"
-printf 'Configuration: %s (symlinked to %s)\n' "$CONFIG_DIR" "$SRC"
-
-if [[ "$BACKED_UP_COUNT" -gt 0 ]]; then
-    printf 'Backup:        %s\n' "$BACKUP_DIR"
-fi
-
-if [[ "${#UNKNOWN_PACKAGES[@]}" -gt 0 ]]; then
-    printf '\n'
-    warning "Unresolved packages (install manually): ${UNKNOWN_PACKAGES[*]}"
-fi
-
-printf '\n'
-warning "Log out and back into Hyprland for the changes to fully take effect."
-
-printf '\n'
-info "You can start Hyprland with:"
-printf '  Hyprland\n'
-
-printf '\n'
-success "Installation complete!"
+  • Log out and back in (or reboot) so keyd, XCURSOR_* and the shell profile
+    are applied to every session.
+  • Bootloader theme: sudo ./install-limine.sh  (copies limine/limine.conf and
+    limine/wallpaper.jpg to the ESP).
+  • Keymap cheat sheet: press the  key in the bar, or run
+    ~/.config/hypr/scripts/keymaps.sh
+EOF
