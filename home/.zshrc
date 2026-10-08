@@ -62,7 +62,6 @@ export PATH=$PATH:$GOPATH/bin
 
 
 
-[ -f "/home/harry/.ghcup/env" ] && . "/home/harry/.ghcup/env" # ghcup-env%  
-
-
-[ -f "/home/harry/.ghcup/env" ] && . "/home/harry/.ghcup/env" # ghcup-env
+# Haskell toolchain. Was hardcoded to /home/harry (and duplicated), so it
+# silently did nothing for any other username.
+[ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
