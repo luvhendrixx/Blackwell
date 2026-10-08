@@ -92,6 +92,31 @@ Useful flags: `./install.sh --dry-run`, `./install.sh --link-only`.
 Full list: the Apple logo in the bar (or `~/.config/hypr/scripts/keymaps.sh`)
 opens a searchable rofi cheat sheet generated from `keybinds.lua`.
 
+## Bootloader (Limine)
+
+Themed macOS-style Limine menu (wallpaper + interface colours) lives in `limine/`.
+`./install-limine.sh` deploys the EFI binary, the config and the wallpaper, and
+registers a firmware boot entry (keeping the standard `EFI/BOOT` fallback path).
+
+### Automatic kernel entries
+
+`limine-mkinitcpio-hook-git` (AUR) automates everything else:
+
+```bash
+yay -S limine-mkinitcpio-hook-git kernel-modules-hook
+sudo limine-install                     # deploy + register managed Limine
+sudo limine-mkinitcpio -p linux-zen     # build kernel + write its boot entry
+```
+
+After that, every `pacman -S linux*` automatically adds/removes its Limine entry
+(pacman hooks: `80-limine-efi-deploy`, `90-limine-mkinitcpio-install/remove`), and
+`kernel-modules-hook` keeps the previous kernel if an upgrade fails.
+Config lives in `/etc/default/limine` (`KERNEL_CMDLINE`, `ENABLE_UKI`, …).
+
+The tool manages `$ESP/limine.conf` and preserves non-entry lines, so the wallpaper
+and `interface_*` colours survive regeneration. It also keeps a timestamped
+`limine.conf.old` backup.
+
 ## Notes
 
 - The Limine config uses `root=UUID=` (filesystem, not disk) so it survives disk
