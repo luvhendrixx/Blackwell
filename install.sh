@@ -51,23 +51,60 @@ if [ "$LINK_ONLY" = 0 ]; then
         AUR_HELPER=""
     fi
 
+    # pacman -S aborts the WHOLE transaction on one unresolvable target, so a
+    # single AUR name left in packages-repo.txt silently blocks every other
+    # package. Filter the list against the configured sync databases and hand
+    # the leftovers to the AUR helper instead.
+    strays=""
+
+    aur_fallback_list() {
+        grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" \
+            | while read -r p; do
+                  pacman -Slq 2>/dev/null | grep -qxF "$p" || printf '%s\n' "$p"
+              done
+    }
+
     if [ -f "$REPO_DIR/packages-repo.txt" ]; then
-        say "Installing official-repo packages"
-        # shellcheck disable=SC2046
-        run sudo pacman -S --needed --noconfirm $(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" | tr '\n' ' ')
+        repo_pkgs=$(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" | tr '\n' ' ')
+        strays=$(aur_fallback_list)
+
+        if [ -n "$repo_pkgs" ]; then
+            say "Installing official-repo packages"
+            # shellcheck disable=SC2046
+            run sudo pacman -S --needed --noconfirm $repo_pkgs \
+                || die "pacman failed to install official-repo packages."
+        fi
+
+        if [ -n "$strays" ]; then
+            warn "Not in official repos, deferring to the AUR helper:"
+            printf '     %s\n' $strays
+            printf '   (add these to packages-aur.txt to make it permanent)\n'
+        fi
     fi
 
-    if [ -n "$AUR_HELPER" ] && [ -f "$REPO_DIR/packages-aur.txt" ]; then
-        say "Installing AUR packages with $AUR_HELPER"
-        # shellcheck disable=SC2046
-        run "$AUR_HELPER" -S --needed --noconfirm $(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-aur.txt" | tr '\n' ' ')
+    if [ -n "$AUR_HELPER" ]; then
+        aur_pkgs=""
+        [ -f "$REPO_DIR/packages-aur.txt" ] && \
+            aur_pkgs=$(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-aur.txt" | tr '\n' ' ')
+        # repo-list strays are appended so they still get installed
+        aur_pkgs="$aur_pkgs $strays"
+
+        if [ -n "$(printf '%s' "$aur_pkgs" | tr -d ' ')" ]; then
+            say "Installing AUR packages with $AUR_HELPER"
+            # shellcheck disable=SC2046
+            run "$AUR_HELPER" -S --needed --noconfirm $aur_pkgs \
+                || die "$AUR_HELPER failed to install AUR packages."
+        fi
     elif [ -f "$REPO_DIR/packages-aur.txt" ]; then
         warn "No AUR helper found; install packages-aur.txt manually."
     fi
 
-    # Optional extras not in the package lists
+    # Extras that are already in packages-repo.txt; kept as a safety net for
+    # people who trimmed the list. Failure here is not fatal.
     say "Ensuring helper tools are present"
-    run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick
+    # shellcheck disable=SC2046
+    run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick \
+        || warn "Some helper tools failed to install."
 fi
 
 # ── 3. symlink configs ──────────────────────────────────────────────────────
@@ -172,15 +209,18 @@ if [ "$DRY_RUN" = 0 ]; then
             printf 'root=UUID=%s rootflags=subvol=@ rw rootfstype=btrfs quiet splash\n' \
                 "$root_uuid" > /etc/kernel/cmdline
             say "Wrote /etc/kernel/cmdline"
-        elif ! grep -q "$root_uuid" /etc/kernel/cmdline; then
-            warn "/etc/kernel/cmdline does not contain $root_uuid — fix it if the"
-            warn "bootloader cmdline should differ (see /proc/cmdline)."
+        elif ! grep -qE "$root_uuid|$(findmnt -no PARTUUID /)" /etc/kernel/cmdline; then
+            # A PARTUUID cmdline is legitimate and survives disk swaps just as
+            # well as a UUID one, so only complain if neither is present.
+            warn "/etc/kernel/cmdline matches neither the root UUID nor PARTUUID."
+            warn "Boot is currently using: $(cat /proc/cmdline)"
         fi
 
         say "Deploying the themed Limine bootloader"
         if [ -x "$REPO_DIR/install-limine.sh" ]; then
             REPO_LIMINE_CONF=/tmp/limine.conf.new ESP="$esp" "$REPO_DIR/install-limine.sh" || \
-                warn "install-limine.sh reported a problem — bootloader may need a manual look."
+                die "install-limine.sh failed — the bootloader was NOT themed.
+       Re-run it manually once fixed: ESP=$esp ./install-limine.sh"
         fi
 
         if command -v limine-mkinitcpio >/dev/null 2>&1; then
