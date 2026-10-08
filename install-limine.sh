@@ -26,7 +26,9 @@ warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 [ -d "$DEST_BOOT" ] || die "$DEST_BOOT not found — is that your ESP? (try ESP=/efi)"
-[ -f "$REPO_DIR/limine/limine.conf" ] || die "limine/limine.conf missing from the repo"
+# Allow the caller (install.sh) to pass a machine-adjusted config
+LIMINE_CONF="${REPO_LIMINE_CONF:-$REPO_DIR/limine/limine.conf}"
+[ -f "$LIMINE_CONF" ] || die "limine/limine.conf missing from the repo"
 
 # ── 0. per-machine values ────────────────────────────────────────────────
 # In limine/limine.conf, set:
@@ -37,10 +39,11 @@ die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 say "Installing themed config + wallpaper to the ESP"
 sudo cp "$DEST_BOOT/limine.conf" "$DEST_BOOT/limine.conf.bak.$(date +%Y%m%d-%H%M)" 2>/dev/null || true
 sudo cp "$REPO_DIR/limine/wallpaper.jpg" "$DEST_BOOT/wallpaper.jpg"
-# Limine-entry-tool manages $ESP/limine.conf; the copy under BOOT/ stays as a
-# hand-written fallback for the standard EFI/BOOT bootloader path.
-sudo cp "$REPO_DIR/limine/limine.conf" "$ESP/limine.conf"
-sudo cp "$REPO_DIR/limine/limine.conf" "$DEST_BOOT/limine.conf"
+# Exactly ONE config on the ESP, at its root: that is where limine-entry-tool
+# manages it, and Limine also finds it there for the EFI/BOOT fallback binary.
+# A second copy under EFI/BOOT would go stale (empty menu on the fallback path).
+sudo cp "$LIMINE_CONF" "$ESP/limine.conf"
+sudo rm -f "$DEST_BOOT/limine.conf"
 
 # ── 1b. limine-entry-tool config (if the automation is installed) ───────
 if [ -f "$REPO_DIR/limine/limine-entry-tool.conf" ] && command -v limine-mkinitcpio >/dev/null 2>&1; then

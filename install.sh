@@ -150,15 +150,63 @@ if [ "$DRY_RUN" = 0 ]; then
     run xdg-mime default org.gnome.Nautilus.desktop inode/directory
 fi
 
-# ── 5. done ─────────────────────────────────────────────────────────────────
+# ── 5. bootloader ────────────────────────────────────────────────────────────
+# Limine needs machine-specific values, so we detect them here instead of
+# making you hand-edit anything:
+#   * root filesystem UUID  -> substituted into limine/limine.conf
+#   * ESP mount point       -> where the EFI/limine binaries and config land
+if [ "$DRY_RUN" = 0 ]; then
+    esp=$(findmnt -rno TARGET,FSTYPE | awk '$2=="vfat"{print $1; exit}')
+    root_uuid=$(findmnt -no UUID /)
+
+    if [ -n "$esp" ] && [ -n "$root_uuid" ]; then
+        say "ESP mounted at $esp, root UUID $root_uuid"
+
+        # machine-local limine.conf with this machine's root UUID
+        cp "$REPO_DIR/limine/limine.conf" /tmp/limine.conf.new
+        sed -i "s|root=UUID=[0-9a-f-]*|root=UUID=$root_uuid|" /tmp/limine.conf.new
+
+        # /etc/kernel/cmdline is the canonical kernel cmdline on Arch
+        if [ ! -f /etc/kernel/cmdline ]; then
+            mkdir -p /etc/kernel
+            printf 'root=UUID=%s rootflags=subvol=@ rw rootfstype=btrfs quiet splash\n' \
+                "$root_uuid" > /etc/kernel/cmdline
+            say "Wrote /etc/kernel/cmdline"
+        elif ! grep -q "$root_uuid" /etc/kernel/cmdline; then
+            warn "/etc/kernel/cmdline does not contain $root_uuid — fix it if the"
+            warn "bootloader cmdline should differ (see /proc/cmdline)."
+        fi
+
+        say "Deploying the themed Limine bootloader"
+        if [ -x "$REPO_DIR/install-limine.sh" ]; then
+            REPO_LIMINE_CONF=/tmp/limine.conf.new ESP="$esp" "$REPO_DIR/install-limine.sh" || \
+                warn "install-limine.sh reported a problem — bootloader may need a manual look."
+        fi
+
+        if command -v limine-mkinitcpio >/dev/null 2>&1; then
+            say "Generating a boot entry for the installed kernel(s)"
+            sudo limine-install
+            sudo limine-mkinitcpio || warn "limine-mkinitcpio failed — run it again after fixing."
+        else
+            warn "limine-mkinitcpio-hook-git not installed: kernel entries will NOT be"
+            warn "automatic yet. Install it with: yay -S limine-mkinitcpio-hook-git kernel-modules-hook"
+        fi
+        rm -f /tmp/limine.conf.new
+    else
+        warn "Could not detect an ESP mount point or root UUID — skipping bootloader setup."
+        warn "Run ./install-limine.sh manually once you know the ESP path."
+    fi
+fi
+
+# ── 6. done ─────────────────────────────────────────────────────────────────
 cat <<'EOF'
 
 Setup complete.
 
   • Log out and back in (or reboot) so keyd, XCURSOR_* and the shell profile
     are applied to every session.
-  • Bootloader theme: sudo ./install-limine.sh  (copies limine/limine.conf and
-    limine/wallpaper.jpg to the ESP).
-  • Keymap cheat sheet: press the  key in the bar, or run
+  • Reboot to see the themed Limine menu. From then on, kernel updates
+    install their own boot entries automatically.
+  • Keymap cheat sheet: click the  key in the bar, or run
     ~/.config/hypr/scripts/keymaps.sh
 EOF
