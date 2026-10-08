@@ -16,3 +16,7 @@
 # noise
 nohup.out
 *.log
+
+# nautilus stuff
+.config/gtk-3.0/bookmarks
+
