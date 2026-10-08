@@ -61,10 +61,13 @@ if [ "$LINK_ONLY" = 0 ]; then
     # loop: it inherits the loop's stdin and swallows the remaining lines.
     sync_db=$(pacman -Slq 2>/dev/null)
 
+    # Use a here-string, not a pipe: `grep -q` exits on first match and the
+    # upstream printf dies of SIGPIPE, which pipefail reports as failure --
+    # so a piped grep -q would report every package as missing.
     aur_fallback_list() {
         grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" \
             | while read -r p; do
-                  printf '%s\n' "$sync_db" | grep -qxF "$p" || printf '%s\n' "$p"
+                  grep -qxF "$p" <<< "$sync_db" || printf '%s\n' "$p"
               done
     }
 
