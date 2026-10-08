@@ -93,7 +93,8 @@ opens a searchable rofi cheat sheet generated from `keybinds.lua`.
 
 ## Notes
 
-- The Limine config carries this machine's `root=PARTUUID`; change it in
-  `limine/limine.conf` before installing on another machine.
+- The Limine config uses `root=UUID=` (filesystem, not disk) so it survives disk
+  swaps. On a new machine run `findmnt -no UUID /` and update that one line in
+  `limine/limine.conf` before running `./install-limine.sh`.
 - Waybar was replaced by the Quickshell bar; there is no waybar config here.
 - Theme toggle: `SUPER + L` (43pr engine, light/dark).

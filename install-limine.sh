@@ -15,4 +15,4 @@ sudo cp "$REPO_DIR/limine/limine.conf" "$DEST/limine.conf"
 sudo cp "$REPO_DIR/limine/wallpaper.jpg" "$DEST/wallpaper.jpg"
 
 echo "Limine theme installed to $DEST (previous config backed up)."
-echo "NOTE: edit the root=PARTUUID line in limine/limine.conf to match your machine."
+echo "NOTE: adjust root=UUID (findmnt -no UUID /) and the kernel path for this machine."
