@@ -1,3 +1,7 @@
+# Provides the Bibata-Modern-Ice cursor theme referenced by
+# install.sh (gsettings cursor-theme) and hyprland.lua (XCURSOR_THEME).
+# Without it both silently fall back to the default arrow.
+bibata-cursor-theme
 hyprmod
 limine-mkinitcpio-hook-git
 paccache-hook
