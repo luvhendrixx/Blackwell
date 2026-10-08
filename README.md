@@ -16,6 +16,7 @@ same file.
 │   ├── gtk-3.0/ gtk-4.0/    # cursor + icon theme settings
 │   └── ...
 ├── home/.zshrc              # symlinked to ~/.zshrc (starship, zoxide, eza, plugins)
+├── wallpapers/              # symlinked to ~/Pictures/Wallpapers (wallpaper picker)
 ├── limine/                  # macOS-style bootloader theme (limine.conf + wallpaper.jpg)
 ├── packages-repo.txt        # official-repo packages
 ├── packages-aur.txt         # AUR packages
