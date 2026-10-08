@@ -34,7 +34,6 @@ htop
 hyprland
 hyprlauncher
 hyprlock
-hyprmod
 hyprpolkitagent
 imagemagick
 intel-media-driver
@@ -73,8 +72,6 @@ noto-fonts-emoji
 nvtop
 nwg-look
 opencode
-paccache-hook
-papirus-folders
 papirus-icon-theme
 pavucontrol
 pipewire
@@ -106,12 +103,10 @@ ttf-jetbrains-mono-nerd
 ttf-liberation
 ttf-roboto-mono
 tumbler
-typora
 ufw
 unzip
 uwsm
 vim
-visual-studio-code-bin
 vpl-gpu-rt
 vulkan-intel
 vulkan-nouveau
@@ -128,10 +123,7 @@ xed
 xf86-video-amdgpu
 xf86-video-ati
 xf86-video-nouveau
-yay
-yay-debug
 zed
-zen-browser-bin
 zoxide
 zram-generator
 zsh
