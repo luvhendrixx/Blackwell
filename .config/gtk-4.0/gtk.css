@@ -1,0 +1,15 @@
+/* Change the main file view window background */
+.content-view, scrolledwindow {
+    background-color: #1a1b26; /* Swap with your favorite hex color */
+}
+
+/* Change the sidebar appearance */
+.sidebar, .navigation-sidebar {
+    background-color: #16161e;
+}
+
+/* Remove rounded window corners for a sharper appearance */
+window, .windowframe {
+    border-radius: 0px;
+}
+
