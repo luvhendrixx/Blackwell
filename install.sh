@@ -175,13 +175,13 @@ fi
 # ── 4. post-install steps ───────────────────────────────────────────────────
 if [ "$DRY_RUN" = 0 ]; then
     say "Enabling keyd (Right Shift = compose key)"
-    if [ -f /etc/keyd/default.conf ]; then
-        run sudo systemctl enable --now keyd
+    if [ -f "$SRC/keyd/default.conf" ]; then
+        run sudo ln -sf "$SRC/keyd/default.conf" /etc/keyd/default.conf
     else
         printf '[ids]\n*\n\n[main]\nrightshift = compose\n' \
             | run sudo tee /etc/keyd/default.conf >/dev/null
-        run sudo systemctl enable --now keyd
     fi
+    run sudo systemctl enable --now keyd
 
     say "Enabling pacman housekeeping"
     run sudo systemctl enable --now paccache-hook.service 2>/dev/null
