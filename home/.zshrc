@@ -1,8 +1,7 @@
-# Use the slim prompt inside Zed's terminal
-if [[ -n $ZED_TERM || $TERM_PROGRAM == zed ]]; then
+# Use the slim prompt inside Zed or VS Code terminals
+if [[ -n $ZED_TERM || $TERM_PROGRAM == zed || $TERM_PROGRAM == vscode ]]; then
   export STARSHIP_CONFIG="$HOME/.config/starship-ide.toml"
 fi
-
 
 # Starship prompt
 eval "$(starship init zsh)"
