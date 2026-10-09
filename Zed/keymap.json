@@ -1,0 +1,21 @@
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-shift-x": "zed::Extensions",
+    },
+  },
+  {
+    "context": "Pane",
+    "bindings": {
+      "ctrl-1": "pane::CloseActiveItem",
+    },
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-w": "editor::NewlineBelow",
+      "ctrl-e": "editor::MoveToEndOfLine",
+    },
+  },
+]
