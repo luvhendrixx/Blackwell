@@ -1,165 +1,121 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
-add_newline = false
+add_newline = true
 
-[bun]
-format = "via [$symbol]($style)"
+command_timeout = 500   # don't let slow git calls hang the prompt
+scan_timeout = 30
 
-[buf]
-format = "with [$symbol]($style)"
+# Top line: git, pushed to the far right. Bottom line: apple logo + arrow
+format = """
+$fill$git_state$git_branch$git_status$git_metrics
+[ 󰀵 ](bold white)$character"""
+
+# Far right of the prompt line: duration, jobs, languages, directory
+right_format = """
+$cmd_duration$jobs\
+$haskell$c$cpp$odin$python$rust$golang$nodejs${custom.react}\
+ $directory"""
+
+[fill]
+symbol = " "
+
+[character]
+success_symbol = "[~ >](bold green)"
+error_symbol = "[~ >](bold red)"
+
+[directory]
+style = "bold cyan"
+truncation_length = 3
+truncation_symbol = "…/"
+truncate_to_repo = false
+format = "[$path]($style)[$read_only]($read_only_style)"
+
+# ---------- Productivity ----------
+[cmd_duration]
+min_time = 2000
+format = "[󰔟 $duration ]($style)"
+style = "dimmed white"
+
+[jobs]
+symbol = "✦"
+number_threshold = 1
+format = "[$symbol$number ]($style)"
+style = "bold yellow"
+
+# ---------- Git ----------
+[git_state]
+format = '[\($state( $progress_current/$progress_total)\)]($style) '
+style = "bold yellow"
+
+[git_branch]
+symbol = " "
+style = "bold white"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "bold red"
+format = '([\[$all_status$ahead_behind\]]($style) )'
+conflicted = "⚔️ "
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked = "?${count}"
+stashed = "📦"
+modified = "!${count}"
+staged = "+${count}"
+renamed = "»"
+deleted = "✘${count}"
+
+[git_metrics]
+disabled = false
+added_style = "bold green"
+deleted_style = "bold red"
+format = '([+$added]($added_style))'
+
+# ---------- Languages (icon only, dimmed so git/dir stand out) ----------
+[haskell]
+symbol = "λ "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
 [c]
-format = "via [$symbol($name)]($style)"
-
-[cmake]
-format = "via [$symbol]($style)"
-
-[cobol]
-format = "via [$symbol]($style)"
+symbol = " "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
 [cpp]
-format = "via [$symbol($name)]($style)"
-
-[crystal]
-format = "via [$symbol]($style)"
-
-[daml]
-format = "via [$symbol]($style)"
-
-[dart]
-format = "via [$symbol]($style)"
-
-[deno]
-format = "via [$symbol]($style)"
-
-[dotnet]
-format = "[$symbol(🎯 $tfm )]($style)"
-
-[elixir]
-format = 'via [$symbol]($style)'
-
-[elm]
-format = 'via [$symbol]($style)'
-
-[erlang]
-format = 'via [$symbol]($style)'
-
-[fennel]
-format = 'via [$symbol]($style)'
-
-[fortran]
-format = 'via [$symbol]($style)'
-
-[gleam]
-format = 'via [$symbol]($style)'
-
-[golang]
-format = 'via [$symbol]($style)'
-
-[gradle]
-format = 'via [$symbol]($style)'
-
-[haskell]
-format = 'via [$symbol]($style)'
-
-[haxe]
-format = 'via [$symbol]($style)'
-
-[helm]
-format = 'via [$symbol]($style)'
-
-[java]
-format = 'via [$symbol]($style)'
-
-[julia]
-format = 'via [$symbol]($style)'
-
-[kotlin]
-format = 'via [$symbol]($style)'
-
-[lua]
-format = 'via [$symbol]($style)'
-
-[maven]
-format = 'via [$symbol]($style)'
-
-[meson]
-format = 'via [$symbol]($style)'
-
-[mojo]
-format = 'with [$symbol]($style)'
-
-[nim]
-format = 'via [$symbol]($style)'
-
-[nodejs]
-format = 'via [$symbol]($style)'
-
-[ocaml]
-format = 'via [$symbol(\($switch_indicator$switch_name\) )]($style)'
+disabled = false
+symbol = " "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
 [odin]
-format = 'via [$symbol]($style)'
-
-[opa]
-format = 'via [$symbol]($style)'
-
-[perl]
-format = 'via [$symbol]($style)'
-
-[php]
-format = 'via [$symbol]($style)'
-
-[pixi]
-format = 'via [$symbol($environment )]($style)'
-
-[pulumi]
-format = 'via [$symbol$stack]($style)'
-
-[purescript]
-format = 'via [$symbol]($style)'
+symbol = "Ø "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
 [python]
-format = 'via [$symbol]($style)'
-
-[quarto]
-format = 'via [$symbol]($style)'
-
-[raku]
-format = 'via [$symbol]($style)'
-
-[red]
-format = 'via [$symbol]($style)'
-
-[rlang]
-format = 'via [$symbol]($style)'
-
-[ruby]
-format = 'via [$symbol]($style)'
+symbol = "🐍 "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
 [rust]
-format = 'via [$symbol]($style)'
+symbol = "🦀 "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
-[scala]
-format = 'via [$symbol]($style)'
+[golang]
+symbol = "🐹 "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
-[solidity]
-format = 'via [$symbol]($style)'
+[nodejs]
+symbol = " "
+style = "dimmed white"
+format = "[$symbol]($style)"
 
-[swift]
-format = 'via [$symbol]($style)'
-
-[typst]
-format = 'via [$symbol]($style)'
-
-[vagrant]
-format = 'via [$symbol]($style)'
-
-[vlang]
-format = 'via [$symbol]($style)'
-
-[xmake]
-format = "via [$symbol]($style)"
-
-[zig]
-format = 'via [$symbol]($style)'
+[custom.react]
+when = "grep -q '\"react\"' package.json 2>/dev/null"
+command = "echo ⚛️"
+format = "[$output ]($style)"
+style = "dimmed white"
