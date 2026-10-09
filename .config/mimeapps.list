@@ -11,8 +11,13 @@ application/xhtml+xml=zen.desktop
 application/x-extension-xhtml=zen.desktop
 application/x-extension-xht=zen.desktop
 text/plain=nvim.desktop
+image/jpeg=com.interversehq.qView.desktop
+image/png=qview.desktop
+image/webp=com.interversehq.qView.desktop
 
 [Added Associations]
 x-scheme-handler/http=zen.desktop;
 x-scheme-handler/https=zen.desktop;
 x-scheme-handler/chrome=zen.desktop;
+image/jpeg=com.interversehq.qView.desktop;
+image/webp=com.interversehq.qView.desktop;
