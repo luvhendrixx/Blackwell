@@ -47,6 +47,13 @@ HISTSIZE=10000
 SAVEHIST=10000
 setopt hist_ignore_dups hist_ignore_space share_history
 
+# Instantly append commands to history file as soon as you hit Enter (instead of waiting for terminal exit)
+setopt INC_APPEND_HISTORY
+
+# Skip saving a command to history if it perfectly matches the previous one you just ran
+setopt HIST_IGNORE_DUPS
+
+
 eval "$(zoxide init zsh)"
 
 # ---------- Aliases ----------
