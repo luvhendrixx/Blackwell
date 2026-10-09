@@ -78,4 +78,5 @@ source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
-
+export EDITOR="nvim"
+export VISUAL="nvim"
