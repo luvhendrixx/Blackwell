@@ -123,6 +123,6 @@ root) — a second copy under `EFI/BOOT/` goes stale.
 
 - The Limine config uses `root=UUID=` (filesystem, not disk) so it survives disk
   swaps. On a new machine run `findmnt -no UUID /` and update that one line in
-  `limine/limine.conf` before running `./install-limine.sh`.
+  `limine/limine.conf` before running `./install-limine.sh`. (i think i fixed it tho, so its safe now)
 - Waybar was replaced by the Quickshell bar; there is no waybar config here.
 - Theme toggle: `SUPER + L` (43pr engine, light/dark).
