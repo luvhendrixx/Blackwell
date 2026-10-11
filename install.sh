@@ -172,6 +172,28 @@ if [ -d "$REPO_DIR/home" ]; then
     done
 fi
 
+# fastfetch doesn't expand $HOME or ~ in logo paths, so its config ships with
+# an @HOME@ placeholder. Give each user a patched REAL copy of the config (in a
+# real dir, not the symlinked one) so the repo file stays clean for the next
+# person; other assets in the repo dir (images, etc.) are symlinked back in.
+ff_dir="$CONFIG_DIR/fastfetch"
+if [ -d "$SRC/fastfetch" ]; then
+    if [ -L "$ff_dir" ]; then
+        run rm "$ff_dir"
+    elif [ -e "$ff_dir" ]; then
+        run mv "$ff_dir" "$ff_dir.pre-dotfiles"
+    fi
+    run mkdir -p "$ff_dir"
+    run cp "$SRC/fastfetch/config.jsonc" "$ff_dir/config.jsonc"
+    for f in "$SRC/fastfetch"/*; do
+        name="$(basename "$f")"
+        [ "$name" = "config.jsonc" ] && continue
+        [ -e "$ff_dir/$name" ] || run ln -s "$f" "$ff_dir/$name"
+    done
+    run sed -i "s|@HOME@|$HOME|g" "$ff_dir/config.jsonc"
+    echo "  patched fastfetch config (per-user copy)"
+fi
+
 # ── 4. post-install steps ───────────────────────────────────────────────────
 if [ "$DRY_RUN" = 0 ]; then
     say "Enabling keyd (Right Shift = compose key)"

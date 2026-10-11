@@ -76,7 +76,7 @@ alias ff="fastfetch"
 # ---------- Languages ----------
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
-[ -f "/home/bond/.ghcup/env" ] && . "/home/bond/.ghcup/env" # ghcup-env
+[ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
 
 
 # ---------- Plugins (order matters: highlighting, then substring-search) ----------

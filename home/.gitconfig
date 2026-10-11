@@ -1,7 +1,3 @@
-[user]
-	email = svregn@proton.me
-	name = Sonoma
-
 [init]
     defaultBranch = main          # only affects NEW repos
 
