@@ -41,3 +41,6 @@
 
     discard = restore             # discard unstaged changes in a file
     unstage = restore --staged    # safer than 'reset HEAD'
+[user]
+	email = svregn@proton.me
+	name = sonoma
