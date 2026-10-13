@@ -66,6 +66,78 @@ alias fm="spf"
 alias zed="zeditor"
 alias ff="fastfetch"
 
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
+
 
 
 # ---------- SSH agent (only start if not already running) ----------

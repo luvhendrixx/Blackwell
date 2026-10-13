@@ -7,7 +7,7 @@ scan_timeout = 30
 
 # Top line: git, pushed to the far right. Bottom line: apple logo + arrow
 format = """
-$fill$git_state$git_branch$git_status$git_metrics
+$fill$git_state$git_branch$git_status
 [ 󰀵 ](bold white)$character"""
 
 # Far right of the prompt line: duration, jobs, languages, directory
@@ -66,9 +66,6 @@ renamed = "»"
 deleted = "✘${count}"
 
 [git_metrics]
-disabled = false
-added_style = "bold green"
-deleted_style = "bold red"
-format = '([+$added]($added_style))'
+disabled = true
 
 
