@@ -1,4 +1,4 @@
-# dotfiles
+# Blackwell
 
 Arch Linux + Hyprland (Lua config) + a Quickshell macOS-style shell.
 Everything in this repo is the single source of truth: `~/.config/*` and
