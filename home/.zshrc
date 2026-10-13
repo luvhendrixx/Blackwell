@@ -6,40 +6,15 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
-
-# ---------- Transient prompt ----------
-TRANSIENT_PROMPT=$'\n%B%F{green}~ >%f%b '
-
-zle-line-init() {
-  emulate -L zsh
-  [[ $CONTEXT == start ]] || return 0
-
-  while true; do
-    zle .recursive-edit
-    local -i ret=$?
-    [[ $ret == 0 && $KEYS == $'\4' ]] || break
-    [[ -o ignore_eof ]] || exit 0
-  done
-
-  local saved_prompt=$PROMPT
-  local saved_rprompt=$RPROMPT
-  PROMPT=$TRANSIENT_PROMPT
-  RPROMPT=''
-  zle .reset-prompt
-  PROMPT=$saved_prompt
-  RPROMPT=$saved_rprompt
-
-  if (( ret )); then
-    zle .send-break
-  else
-    zle .accept-line
-  fi
-  return ret
+# ---------- Blackwell update manager ----------
+blackwell() {
+  bash "$HOME/dotfiles/update.sh" "$@"
 }
-zle -N zle-line-init
+bw() { blackwell "$@"; }
 
 # ---------- Quality of life ----------
-autoload -U compinit && compinit
+autoload -U compinit
+compinit -D -d ~/.zcompdump
 setopt autocd
 
 HISTFILE=~/.zsh_history
@@ -53,9 +28,21 @@ setopt INC_APPEND_HISTORY
 # Skip saving a command to history if it perfectly matches the previous one you just ran
 setopt HIST_IGNORE_DUPS
 
-
-eval "$(zoxide init zsh)"
-
+# ---------- Lazy-load zoxide (only init on first use) ----------
+_ZOXIDE_LOADED=0
+_zoxide_lazy_setup() {
+  [[ $_ZOXIDE_LOADED -eq 1 ]] && return
+  _ZOXIDE_LOADED=1
+  eval "$(zoxide init zsh)"
+}
+z() {
+  _zoxide_lazy_setup
+  __zoxide_z "$@"
+}
+zi() {
+  _zoxide_lazy_setup
+  __zoxide_zi "$@"
+}
 # ---------- Aliases ----------
 alias ls="eza --icons=always --color=auto"
 alias ll="eza -la --icons=always --git"
@@ -65,7 +52,17 @@ alias fm="spf"
 alias zed="zeditor"
 alias ff="fastfetch"
 
-
+# ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
+gitstats() {
+  local added deleted
+  added=$(git diff --shortstat 2>/dev/null | awk '{print $4}')
+  deleted=$(git diff --shortstat 2>/dev/null | awk '{print $6}')
+  if [[ -n "$added" || -n "$deleted" ]]; then
+    print -P "%F{green}+$added%f %F{red}-$deleted%f"
+  else
+    print -P "%F{yellow}no changes%f"
+  fi
+}
 
 # ---------- SSH agent (only start if not already running) ----------
 #if [ -z "$SSH_AUTH_SOCK" ]; then
@@ -78,17 +75,26 @@ export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
 
+# ---------- Plugins (deferred until after first prompt) ----------
+_defer_plugins() {
+  source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+  source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+  source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+  bindkey '^[[A' history-substring-search-up
+  bindkey '^[[B' history-substring-search-down
+  zle -D zle-line-init
+}
+zle-line-init() {
+  _defer_plugins
+}
+zle -N zle-line-init
 
-# ---------- Plugins (order matters: highlighting, then substring-search) ----------
-source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
-bindkey '^[[A' history-substring-search-up
-bindkey '^[[B' history-substring-search-down
-
-source <(fzf --zsh)
-
+# ---------- Lazy-load fzf (only init on first use) ----------
+fzf() {
+  unfunction fzf
+  source <(fzf --zsh)
+  fzf "$@"
+}
 
 export EDITOR="nvim"
 export VISUAL="nvim"
-
