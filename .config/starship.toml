@@ -2,18 +2,17 @@
 
 add_newline = true
 
-command_timeout = 500   # don't let slow git calls hang the prompt
+command_timeout = 200   # don't let slow git calls hang the prompt
 scan_timeout = 30
 
 # Top line: git, pushed to the far right. Bottom line: apple logo + arrow
 format = """
-$fill$git_state$git_branch$git_status$git_metrics
+$fill$git_state$git_branch$git_status
 [ 󰀵 ](bold white)$character"""
 
 # Far right of the prompt line: duration, jobs, languages, directory
 right_format = """
 $cmd_duration$jobs\
-$haskell$c$cpp$odin$python$rust$golang$nodejs${custom.react}\
  $directory"""
 
 [fill]
@@ -67,55 +66,6 @@ renamed = "»"
 deleted = "✘${count}"
 
 [git_metrics]
-disabled = false
-added_style = "bold green"
-deleted_style = "bold red"
-format = '([+$added]($added_style))'
+disabled = true
 
-# ---------- Languages (icon only, dimmed so git/dir stand out) ----------
-[haskell]
-symbol = "λ "
-style = "dimmed white"
-format = "[$symbol]($style)"
 
-[c]
-symbol = " "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[cpp]
-disabled = false
-symbol = " "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[odin]
-symbol = "Ø "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[python]
-symbol = "🐍 "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[rust]
-symbol = "🦀 "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[golang]
-symbol = "🐹 "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[nodejs]
-symbol = " "
-style = "dimmed white"
-format = "[$symbol]($style)"
-
-[custom.react]
-when = "grep -q '\"react\"' package.json 2>/dev/null"
-command = "echo ⚛️"
-format = "[$output ]($style)"
-style = "dimmed white"
