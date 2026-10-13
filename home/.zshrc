@@ -39,7 +39,8 @@ zle-line-init() {
 zle -N zle-line-init
 
 # ---------- Quality of life ----------
-autoload -U compinit && compinit
+autoload -U compinit
+compinit -D -d ~/.zcompdump
 setopt autocd
 
 HISTFILE=~/.zsh_history
