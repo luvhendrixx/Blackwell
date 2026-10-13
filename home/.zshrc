@@ -6,9 +6,6 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
-
-
-
 # ---------- Quality of life ----------
 autoload -U compinit
 compinit -D -d ~/.zcompdump
@@ -25,8 +22,17 @@ setopt INC_APPEND_HISTORY
 # Skip saving a command to history if it perfectly matches the previous one you just ran
 setopt HIST_IGNORE_DUPS
 
-
-eval "$(zoxide init zsh)"
+# ---------- Lazy-load zoxide (only init on first use) ----------
+z() {
+  unfunction z
+  eval "$(zoxide init zsh)"
+  z "$@"
+}
+zoxide() {
+  unfunction z zoxide
+  eval "$(zoxide init zsh)"
+  zoxide "$@"
+}
 
 # ---------- Aliases ----------
 alias ls="eza --icons=always --color=auto"
@@ -49,8 +55,6 @@ gitstats() {
   fi
 }
 
-
-
 # ---------- SSH agent (only start if not already running) ----------
 #if [ -z "$SSH_AUTH_SOCK" ]; then
 #  eval "$(ssh-agent -s)" > /dev/null
@@ -62,7 +66,6 @@ export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
 
-
 # ---------- Plugins (order matters: highlighting, then substring-search) ----------
 source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -70,9 +73,12 @@ source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
-source <(fzf --zsh)
-
+# ---------- Lazy-load fzf (only init on first use) ----------
+fzf() {
+  unfunction fzf
+  source <(fzf --zsh)
+  fzf "$@"
+}
 
 export EDITOR="nvim"
 export VISUAL="nvim"
-
