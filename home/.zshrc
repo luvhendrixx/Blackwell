@@ -66,12 +66,19 @@ export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
 [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
 
-# ---------- Plugins (order matters: highlighting, then substring-search) ----------
-source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
-bindkey '^[[A' history-substring-search-up
-bindkey '^[[B' history-substring-search-down
+# ---------- Plugins (deferred until after first prompt) ----------
+_defer_plugins() {
+  source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+  source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+  source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+  bindkey '^[[A' history-substring-search-up
+  bindkey '^[[B' history-substring-search-down
+  zle -D zle-line-init
+}
+zle-line-init() {
+  _defer_plugins
+}
+zle -N zle-line-init
 
 # ---------- Lazy-load fzf (only init on first use) ----------
 fzf() {
