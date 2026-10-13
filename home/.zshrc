@@ -6,6 +6,12 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
+# ---------- Blackwell update manager ----------
+blackwell() {
+  bash "$HOME/dotfiles/update.sh" "$@"
+}
+bw() { blackwell "$@"; }
+
 # ---------- Quality of life ----------
 autoload -U compinit
 compinit -D -d ~/.zcompdump
@@ -23,17 +29,20 @@ setopt INC_APPEND_HISTORY
 setopt HIST_IGNORE_DUPS
 
 # ---------- Lazy-load zoxide (only init on first use) ----------
+_ZOXIDE_LOADED=0
+_zoxide_lazy_setup() {
+  [[ $_ZOXIDE_LOADED -eq 1 ]] && return
+  _ZOXIDE_LOADED=1
+  eval "$(zoxide init zsh)"
+}
 z() {
-  unfunction z
-  eval "$(zoxide init zsh)"
-  z "$@"
+  _zoxide_lazy_setup
+  __zoxide_z "$@"
 }
-zoxide() {
-  unfunction z zoxide
-  eval "$(zoxide init zsh)"
-  zoxide "$@"
+zi() {
+  _zoxide_lazy_setup
+  __zoxide_zi "$@"
 }
-
 # ---------- Aliases ----------
 alias ls="eza --icons=always --color=auto"
 alias ll="eza -la --icons=always --git"
