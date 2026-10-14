@@ -65,6 +65,7 @@ sudo cp "$REPO_DIR/limine/wallpaper.jpg" "$DEST_BOOT/wallpaper.jpg"
 tmp_conf=$(mktemp)
 if sudo test -f "$ESP/limine.conf"; then
     sudo cp "$ESP/limine.conf" "$ESP/limine.conf.bak.$(date +%Y%m%d-%H%M)"
+    sudo sh -c 'ls -1t "$1"/limine.conf.bak.* 2>/dev/null | tail -n +4 | xargs -r rm -f' _ "$ESP"
     sudo cat "$ESP/limine.conf" > "$tmp_conf.old" 2>/dev/null
     entry_block=$(sed -n '/^[^[:space:]]/,$ { /^\//,$p }' "$tmp_conf.old")
     if [ -n "$entry_block" ]; then
@@ -117,7 +118,7 @@ sudo cp /usr/share/limine/BOOTX64.EFI "$DEST_BOOT/BOOTX64.EFI"
 
 # ── 3. firmware entry (best effort) ─────────────────────────────────────
 if command -v efibootmgr >/dev/null; then
-    if efibootmgr | grep -qi "limine"; then
+    if sudo efibootmgr | grep -qi "limine"; then
         say "Firmware entry for Limine already present"
     else
         disk=$(findmnt -no SOURCE "$ESP" | sed 's/[0-9]*$//;s/p$//')
