@@ -195,7 +195,7 @@ if [ -d "$SRC/fastfetch" ]; then
 fi
 
 # ── 4. post-install steps ───────────────────────────────────────────────────
-if [ "$DRY_RUN" = 0 ]; then
+if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     say "Enabling keyd (Right Shift = compose key)"
     if [ -f "$SRC/keyd/default.conf" ]; then
         run sudo ln -sf "$SRC/keyd/default.conf" /etc/keyd/default.conf
@@ -221,7 +221,7 @@ fi
 # making you hand-edit anything:
 #   * root filesystem UUID  -> substituted into limine/limine.conf
 #   * ESP mount point       -> where the EFI/limine binaries and config land
-if [ "$DRY_RUN" = 0 ]; then
+if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     esp=$(findmnt -rno TARGET,FSTYPE | awk '$2=="vfat"{print $1; exit}')
     root_uuid=$(findmnt -no UUID /)
 
