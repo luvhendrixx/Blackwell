@@ -41,7 +41,6 @@ intel-ucode
 jq
 keyd
 layer-shell-qt
-libnotify
 libpulse
 libva-intel-driver
 libvpl
@@ -69,10 +68,7 @@ ninja
 noto-fonts
 noto-fonts-cjk
 noto-fonts-emoji
-nvtop
 nwg-look
-opencode
-papirus-icon-theme
 pavucontrol
 pipewire
 pipewire-alsa
@@ -131,3 +127,12 @@ zsh-autocomplete
 zsh-autosuggestions
 zsh-history-substring-search
 zsh-syntax-highlighting
+firefox
+gnome-keyring
+fwupd
+btrfs-assistant
+libnotify
+go
+uv
+fzf
+git-delta
