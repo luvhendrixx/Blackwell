@@ -242,7 +242,11 @@ fi
 #   * root filesystem UUID  -> substituted into limine/limine.conf
 #   * ESP mount point       -> where the EFI/limine binaries and config land
 if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
-    esp=$(findmnt -rno TARGET,FSTYPE | awk '$2=="vfat"{print $1; exit}')
+    esp=""
+    for cand in /boot /efi /boot/efi; do
+        [ "$(findmnt -rno FSTYPE "$cand" 2>/dev/null)" = "vfat" ] && { esp="$cand"; break; }
+    done
+    [ -n "$esp" ] || esp=$(findmnt -rno TARGET,FSTYPE | awk '$2=="vfat"{print $1; exit}')
     root_uuid=$(findmnt -no UUID /)
 
     if [ -n "$esp" ] && [ -n "$root_uuid" ]; then
