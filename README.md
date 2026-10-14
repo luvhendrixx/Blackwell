@@ -67,7 +67,7 @@ Useful flags: `./install.sh --dry-run`, `./install.sh --link-only`.
 | `SUPER + T` / `SUPER + Return` | Ghostty |
 | `SUPER + Q` / `SUPER + W` | Close window |
 | `SUPER + E` / `SUPER + SHIFT + F` | Files (Nautilus) |
-| `SUPER + B` | Browser (Zen) |
+| `SUPER + B` | Browser (Firefox) |
 | `SUPER + Space` | App launcher (rofi) |
 | `SUPER + D` | Wallpaper picker |
 | `SUPER + S` / `SUPER + ALT + S` | Scratchpad toggle / send window |
