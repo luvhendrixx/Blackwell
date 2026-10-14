@@ -12,7 +12,7 @@ application/x-extension-xhtml=firefox.desktop
 application/x-extension-xht=firefox.desktop
 text/plain=nvim.desktop
 image/jpeg=com.interversehq.qView.desktop
-image/png=qview.desktop
+image/png=com.interversehq.qView.desktop
 image/webp=com.interversehq.qView.desktop
 
 [Added Associations]
@@ -28,3 +28,4 @@ application/x-extension-shtml=firefox.desktop;
 application/xhtml+xml=firefox.desktop;
 application/x-extension-xhtml=firefox.desktop;
 application/x-extension-xht=firefox.desktop;
+image/png=com.interversehq.qView.desktop;
