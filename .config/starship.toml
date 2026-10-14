@@ -1,6 +1,6 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
-add_newline = true
+add_newline = false
 
 command_timeout = 200   # don't let slow git calls hang the prompt
 scan_timeout = 30
