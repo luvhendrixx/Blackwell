@@ -189,22 +189,23 @@ check_broken_symlinks() {
 # ─── main ───────────────────────────────────────────────────────────────────
 banner 2>/dev/null || true
 STASHED=0
+rc=0
 
 case "${1:-}" in
   -u|--update|update)
-    do_yay
-    do_pull
+    do_yay || rc=1
+    do_pull || rc=1
     check_broken_symlinks
     ;;
   -f|--fetch)
-    do_fetch
+    do_fetch || rc=1
     ;;
   -p|--pull)
-    do_pull
+    do_pull || rc=1
     check_broken_symlinks
     ;;
   -y|--yay)
-    do_yay
+    do_yay || rc=1
     ;;
   -s|--status)
     do_status
@@ -225,4 +226,4 @@ case "${1:-}" in
     ;;
 esac
 
-exit 0
+exit "$rc"
