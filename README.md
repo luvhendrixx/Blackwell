@@ -14,7 +14,7 @@ _A minimal setup focused on a balance of performance, aesthetics, productivity a
 
 - Arch + Hyprland (lua config)+ CachyOS kernel + Limine bootloader
 
-- Primarily keyboard driver
+- Nvim using Lazyvim as its "flavour"
 
 - Waybar/Top bar (Quickshell)- Mac-OS like on with the file, edit, view etc stuff you see on and actual Mac,
   and yes, it also 'adapts' to what window your focused on
