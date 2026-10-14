@@ -15,11 +15,13 @@ SRC="$REPO_DIR/.config"
 CONFIG_DIR="$HOME/.config"
 DRY_RUN=0
 LINK_ONLY=0
+CACHYOS=0
 
 for arg in "$@"; do
     case "$arg" in
         --dry-run)   DRY_RUN=1 ;;
         --link-only) LINK_ONLY=1 ;;
+        --cachyos)   CACHYOS=1 ;;
         -h|--help)   sed -n '2,12p' "$0"; exit 0 ;;
     esac
 done
@@ -213,6 +215,15 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
         run sudo systemctl enable --now auto-cpufreq
     else
         warn "auto-cpufreq not installed; skipping (add it to packages-aur.txt)"
+    fi
+    if [ "$CACHYOS" = 1 ]; then
+        say "Installing the CachyOS kernel"
+        if pacman -Sl cachyos >/dev/null 2>&1; then
+            run sudo pacman -S --needed --noconfirm linux-cachyos linux-cachyos-headers \
+                || warn "CachyOS kernel install failed."
+        else
+            warn "The CachyOS repo is not enabled; set it up first (see cachyos.org), then re-run with --cachyos."
+        fi
     fi
     say "Enabling pacman housekeeping"
     run sudo systemctl enable --now paccache-hook.service 2>/dev/null
