@@ -38,7 +38,7 @@ if [ -n "$cmd" ]; then
         rofi*|qs\ -n*) bash -c "$cmd" & ;;
         terminal) ghostty & ;;
         fileManager) nautilus & ;;
-        browser) zen-browser & ;;
+        browser) firefox & ;;
         *) hyprctl dispatch "exec $cmd" ;;
     esac
 else
