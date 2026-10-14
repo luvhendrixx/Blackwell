@@ -1,0 +1,10 @@
+# Enable the custom shader for the cursor
+custom-shader = shaders/cursor_smear.glsl
+
+# Keep animations fluid even when switching windows
+custom-shader-animation = always
+
+# Force a solid block cursor so the shader has a full canvas to morph
+cursor-style = block
+cursor-style-blink = false
+
