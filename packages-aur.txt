@@ -14,4 +14,8 @@ python-hyprland-state
 typora
 visual-studio-code-bin
 yay
-zen-browser-bin
+auto-cpufreq
+limine-snapper-sync-git
+odin
+qview
+webapp-manager
