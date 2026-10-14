@@ -82,7 +82,7 @@ do_fetch() {
   (cd "$REPO_DIR" && git fetch --all --prune)
   local before after
   before=$(cd "$REPO_DIR" && git rev-parse HEAD)
-  after=$(cd "$REPO_DIR" && git rev-parse 'origin/HEAD' 2>/dev/null || git rev-parse @{u})
+  after=$(cd "$REPO_DIR" && git rev-parse '@{u}' 2>/dev/null)
   if [[ $before != $after ]]; then
     warn "New commits available on remote"
     echo "    local:  $before"
@@ -168,7 +168,7 @@ do_log() {
   (cd "$REPO_DIR" && git log --oneline -5)
   echo
   echo -e "${BOLD}Remote (last 5):${NC}"
-  (cd "$REPO_DIR" && git log --oneline -5 'origin/HEAD' 2>/dev/null || echo "  (none)")
+  (cd "$REPO_DIR" && git log --oneline -5 '@{u}' 2>/dev/null || echo "  (none)")
 }
 
 # ─── broken symlinks ────────────────────────────────────────────────────────
