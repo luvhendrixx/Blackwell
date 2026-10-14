@@ -108,7 +108,7 @@ do_pull() {
   if [[ $local_head != $remote_head ]]; then
     log "New updates available — pulling..."
     # check for dirty worktree and auto-stash
-    if ! (cd "$REPO_DIR" && git diff --quiet 2>/dev/null); then
+    if [[ -n $(cd "$REPO_DIR" && git status --porcelain) ]]; then
       warn "Uncommitted changes detected — stashing automatically"
       (cd "$REPO_DIR" && git stash push -u -m "bw auto-stash" )
       STASHED=1
