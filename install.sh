@@ -205,6 +205,15 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     fi
     run sudo systemctl enable --now keyd
 
+    say "Setting up auto-cpufreq (replaces other power managers)"
+    if systemctl cat auto-cpufreq.service >/dev/null 2>&1; then
+        for svc in power-profiles-daemon tlp; do
+            systemctl cat "$svc.service" >/dev/null 2>&1 && run sudo systemctl disable --now "$svc"
+        done
+        run sudo systemctl enable --now auto-cpufreq
+    else
+        warn "auto-cpufreq not installed; skipping (add it to packages-aur.txt)"
+    fi
     say "Enabling pacman housekeeping"
     run sudo systemctl enable --now paccache-hook.service 2>/dev/null
     run sudo systemctl enable --now pacman-orphans.timer 2>/dev/null
