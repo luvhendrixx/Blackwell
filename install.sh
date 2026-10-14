@@ -232,7 +232,6 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     say "Setting cursor + icon defaults"
     run gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Ice'
     run gsettings set org.gnome.desktop.interface cursor-size 15
-    run gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
     run xdg-mime default org.gnome.Nautilus.desktop inode/directory
 fi
 
