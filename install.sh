@@ -74,7 +74,10 @@ if [ "$LINK_ONLY" = 0 ]; then
     }
 
     if [ -f "$REPO_DIR/packages-repo.txt" ]; then
-        repo_pkgs=$(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" | tr '\n' ' ')
+            repo_pkgs=$(grep -vE '^\s*(#|$)' "$REPO_DIR/packages-repo.txt" \
+            | while read -r p; do
+                  grep -qxF "$p" <<< "$sync_db" && printf '%s\n' "$p"
+              done | tr '\n' ' ')
         strays=$(aur_fallback_list)
 
         if [ -n "$repo_pkgs" ]; then
