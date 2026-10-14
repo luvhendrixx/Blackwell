@@ -233,12 +233,19 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
         sed -i "s|root=UUID=[0-9a-f-]*|root=UUID=$root_uuid|" /tmp/limine.conf.new
 
         # /etc/kernel/cmdline is the canonical kernel cmdline on Arch
+        partuuid=$(findmnt -no PARTUUID /)
+        cmd_pat="$root_uuid"
+        [ -n "$partuuid" ] && cmd_pat="$cmd_pat|$partuuid"
+
         if [ ! -f /etc/kernel/cmdline ]; then
-            mkdir -p /etc/kernel
-            printf 'root=UUID=%s rootflags=subvol=@ rw rootfstype=btrfs quiet splash\n' \
-                "$root_uuid" > /etc/kernel/cmdline
+            rootfs=$(findmnt -no FSTYPE /)
+            flags=""
+            [ "$rootfs" = "btrfs" ] && flags="rootflags=subvol=@ "
+            sudo mkdir -p /etc/kernel
+            printf 'root=UUID=%s %srw rootfstype=%s quiet splash\n' \
+                "$root_uuid" "$flags" "$rootfs" | sudo tee /etc/kernel/cmdline >/dev/null
             say "Wrote /etc/kernel/cmdline"
-        elif ! grep -qE "$root_uuid|$(findmnt -no PARTUUID /)" /etc/kernel/cmdline; then
+        elif ! grep -qE "$cmd_pat" /etc/kernel/cmdline; then
             # A PARTUUID cmdline is legitimate and survives disk swaps just as
             # well as a UUID one, so only complain if neither is present.
             warn "/etc/kernel/cmdline matches neither the root UUID nor PARTUUID."
