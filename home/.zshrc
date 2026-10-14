@@ -70,10 +70,6 @@ gitstats() {
 #fi
 # eval $(keychain -q --eval ~/.ssh/hetzner_key)
 
-# ---------- Languages ----------
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOPATH/bin
-[ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
 
 # ---------- Plugins (deferred until after first prompt) ----------
 _defer_plugins() {
@@ -98,3 +94,8 @@ fzf() {
 
 export EDITOR="nvim"
 export VISUAL="nvim"
+
+# ---------- Languages ----------
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOPATH/bin
+[ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env
