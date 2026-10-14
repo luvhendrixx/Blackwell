@@ -1,1 +1,13 @@
+# Cursor: solid, non-blinking block (block is also Ghostty's default)
+cursor-style = block
+cursor-style-blink = false
+
+# Stop shell integration from toggling cursor back to a bar
+shell-integration-features = no-cursor
+
+# Misc
+confirm-close-surface = false
+clipboard-paste-protection = true
+
+# Appearance
 background-opacity = 0.75
