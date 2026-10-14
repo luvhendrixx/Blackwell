@@ -150,10 +150,10 @@ done
 if [ -d "$REPO_DIR/wallpapers" ]; then
     mkdir -p "$HOME/Pictures"
     if [ -d "$HOME/Pictures/Wallpapers" ] && [ ! -L "$HOME/Pictures/Wallpapers" ]; then
-        warn "$HOME/Pictures/Wallpapers exists — merging repo wallpapers in"
-        cp -an "$REPO_DIR/wallpapers/." "$HOME/Pictures/Wallpapers/" 2>/dev/null
+        warn "$HOME/Pictures/Wallpapers exists — moving to .pre-dotfiles"
+        run mv "$HOME/Pictures/Wallpapers" "$HOME/Pictures/Wallpapers.pre-dotfiles"
     fi
-    run rm -rf "$HOME/Pictures/Wallpapers"
+    [ -L "$HOME/Pictures/Wallpapers" ] && run rm "$HOME/Pictures/Wallpapers"
     run ln -s "$REPO_DIR/wallpapers" "$HOME/Pictures/Wallpapers"
     echo "  linked ~/Pictures/Wallpapers"
 fi
