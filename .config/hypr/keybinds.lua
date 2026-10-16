@@ -81,13 +81,14 @@ hl.bind(mainMod .. " + SHIFT + X", hl.dsp.exec_cmd("qs ipc call wheel toggle")) 
 hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("qs -n -p ~/.config/quickshell/hyprquickpaper")) -- Wallpaper selector
 
 -- Emoji picker: pick -> copy -> type into focused window
-hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("rofimoji --action copy type --typer wtype"))
+hl.bind(mainMod .. " + period", hl.dsp.exec_cmd("qs ipc call spotlight emoji"))
 
 -- To-do (direct toggle without opening wheel)
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("qs ipc call todo toggle"))
 
 -- App launcher
-hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd("pgrep -x rofi >/dev/null && pkill -x rofi || " .. menu))
+hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd("qs ipc call spotlight toggle"))
+hl.bind(mainMod .. " + comma", hl.dsp.exec_cmd("qs ipc call notification dismiss"))
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.exec_cmd(fileManager)) -- Nautilus
 
 -- Gpu screen recorder
