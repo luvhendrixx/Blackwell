@@ -1,0 +1,1 @@
+MacShell/MarqueeText.qml
