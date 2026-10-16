@@ -1,0 +1,1 @@
+MacShell/MacBar.qml
