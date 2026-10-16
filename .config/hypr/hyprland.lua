@@ -77,3 +77,6 @@ require("rules")
 -- HyprMod managed settings (disabled: it rebound keys to kitty/thunar,
 -- which were removed; bindings now live in keybinds.lua)
 -- require("hyprland-gui")
+
+-- HyprMod managed settings
+require("hyprland-gui")
