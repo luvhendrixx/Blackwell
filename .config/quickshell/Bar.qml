@@ -3,7 +3,6 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
-import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 
@@ -28,7 +27,6 @@ Scope {
             property real bgOpacity: 1.0
             property bool border: false
             property bool showStats: true
-            property bool showWs: true
             property bool showMedia: true
             property bool showVolume: true
             property bool showBattery: true
@@ -45,7 +43,7 @@ Scope {
     function resetSettings() {
         cfg.position = "top"; cfg.style = "joined"; cfg.thickness = 20; cfg.margin = 4;
         cfg.scale = 1.0; cfg.bgOpacity = 0.7; cfg.border = false;
-        cfg.showStats = false; cfg.showWs = true; cfg.showMedia = true;
+        cfg.showStats = false; cfg.showMedia = true;
         cfg.showVolume = true; cfg.showBattery = true; cfg.showNet = true;
     }
 
@@ -546,7 +544,6 @@ Scope {
                     Repeater {
                         model: [
                             { k: "showStats", l: "CPU / RAM (horizontal)" },
-                            { k: "showWs", l: "Workspaces" },
                             { k: "showMedia", l: "Media" },
                             { k: "showVolume", l: "Volume" },
                             { k: "showBattery", l: "Battery" },
@@ -683,52 +680,7 @@ Scope {
                             }
                         }
 
-                        Item {
-                            visible: cfg.showWs
-                            Layout.alignment: Qt.AlignCenter
-                            implicitWidth: root.vertical ? root.panelThick : wsLane.implicitWidth + 12
-                            implicitHeight: wsLane.implicitHeight + (root.vertical ? 12 : 0)
 
-                            Lane {
-                                id: wsLane
-                                anchors.centerIn: parent
-                                gap: 8
-
-                                Repeater {
-                                    model: Hyprland.workspaces
-                                    delegate: Rectangle {
-                                        id: dot
-                                        required property var modelData
-                                        visible: modelData.id > 0
-                                        Layout.alignment: Qt.AlignCenter
-                                        implicitWidth: root.vertical ? 10 : (modelData.focused ? 32 : 10)
-                                        implicitHeight: root.vertical ? (modelData.focused ? 24 : 10) : 10
-                                        radius: 5
-                                        color: modelData.urgent ? Theme.danger
-                                             : modelData.focused ? Qt.alpha(Theme.accent, 0.2)
-                                             : dotMa.containsMouse ? Theme.accent2
-                                             : Qt.alpha(Theme.textFaint, 0.5)
-
-                                        Behavior on implicitWidth { NumberAnimation { duration: Theme.animMed; easing.type: Easing.OutQuad } }
-                                        Behavior on implicitHeight { NumberAnimation { duration: Theme.animMed; easing.type: Easing.OutQuad } }
-
-                                        MouseArea {
-                                            id: dotMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            onClicked: dot.modelData.activate()
-                                        }
-                                    }
-                                }
-                            }
-
-                            WheelHandler {
-                                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                                onWheel: e => root.run(e.angleDelta.y > 0
-                                    ? "hyprctl dispatch 'hl.dsp.focus({workspace=\"e+1\"})'"
-                                    : "hyprctl dispatch 'hl.dsp.focus({workspace=\"e-1\"})'")
-                            }
-                        }
                     }
                 }
 
