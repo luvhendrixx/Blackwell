@@ -68,7 +68,7 @@ gitstats() {
 #if [ -z "$SSH_AUTH_SOCK" ]; then
 #  eval "$(ssh-agent -s)" > /dev/null
 #fi
-# eval $(keychain -q --eval ~/.ssh/hetzner_key)
+# eval $(keychain -q --eval ~/.ssh/myssh_key)
 
 
 # ---------- Plugins (deferred until after first prompt) ----------
