@@ -239,6 +239,11 @@ ShellRoot {
     MacDock { id: macDock; hub: sharedHub }
     MacWidgets { id: macWidgets; hub: sharedHub }
 
+    // legacy 43PR components whose IPC targets the Hyprland keybinds still reference
+    Todo { id: legacyTodo }
+    Wheel { id: legacyWheel }
+    PowerMenu { id: legacyPowerMenu }
+
     // reopen settings even when both the Dock and the Menu Bar are disabled:
     //   qs -c macbar ipc call settings open
     IpcHandler {
@@ -249,5 +254,26 @@ ShellRoot {
     IpcHandler {
         target: "glass"
         function captures(on: bool): void { macDock.windowCapture = on; }
+    }
+
+    // forward legacy IPC targets to the Mac components so existing Hyprland keybinds keep working
+    IpcHandler {
+        target: "spotlight"
+        function toggle(): void { macBar.search(); }
+        function emoji(): void { macBar.spotOpen("emoji"); }
+        function clipboard(): void { macBar.spotOpen("clip"); }
+        function apps(): void { macBar.spotOpen("apps"); }
+    }
+    IpcHandler {
+        target: "notifications"
+        function toggle(): void { macBar.notifOpen = !macBar.notifOpen; }
+    }
+    IpcHandler {
+        target: "notification"
+        function dismiss(): void { macBar.notifClear(); }
+    }
+    IpcHandler {
+        target: "bar"
+        function toggle(): void { macBar.barEnabled = !macBar.barEnabled; }
     }
 }
