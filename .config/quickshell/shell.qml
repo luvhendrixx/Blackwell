@@ -236,7 +236,7 @@ ShellRoot {
     }
 
     MacBar { id: macBar; hub: sharedHub }
-    // MacDock { id: macDock; hub: sharedHub }
+    MacDock { id: macDock; hub: sharedHub }
     MacWidgets { id: macWidgets; hub: sharedHub }
 
     // reopen settings even when both the Dock and the Menu Bar are disabled:
