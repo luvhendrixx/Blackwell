@@ -42,5 +42,11 @@
     discard = restore             # discard unstaged changes in a file
     unstage = restore --staged    # safer than 'reset HEAD'
 [user]
-	email = xxx
-	name = xxx
+	email = fromHP@gmail.com
+	name = fromHP
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
