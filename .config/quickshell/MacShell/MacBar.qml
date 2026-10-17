@@ -2925,16 +2925,21 @@ Scope {
     property string wallpaperCmd: ""          // "" = auto (awww / swww / hyprpaper); or your own command, {} = the image path
     property real wpBlur: 40                  // blur of the picker glass
     property bool wpOpen: false
+    property string wpFilter: "all"           // "all" | "favourites"  (serpantinum-style filter chips)
     property string wpStatus: ""
     property var wpDirList: []                // images found in the folder
     property var wpFavOk: ({})                // favourites that still exist on disk
     property var wpFiles: []                  // favourites first, then the rest { path, name, fav }
     property string wpQuery: ""               // search filter
-    readonly property var wpShown: {          // what the grid shows (wpFiles filtered by the search)
-        var q = root.wpQuery.trim().toLowerCase(), f = root.wpFiles;
-        if (q === "") return f;
+    readonly property var wpShown: {          // what the grid shows (wpFiles filtered by search + filter chips)
+        var q = root.wpQuery.trim().toLowerCase(), f = root.wpFiles, flt = root.wpFilter;
         var out = [];
-        for (var i = 0; i < f.length; i++) if (f[i].name.toLowerCase().indexOf(q) >= 0) out.push(f[i]);
+        for (var i = 0; i < f.length; i++) {
+            var it = f[i];
+            if (flt === "favourites" && !it.fav) continue;
+            if (q !== "" && it.name.toLowerCase().indexOf(q) < 0) continue;
+            out.push(it);
+        }
         return out;
     }
     function wpResolveDir() {
@@ -6062,7 +6067,7 @@ Scope {
                         onShaderError: root.glassState = "failed"
                     }
 
-                    // ── header: title, folder path, Choose… ──
+                    // ── header: title, folder path, Choose…, Apply ──
                     Item {
                         id: wpHead
                         x: 22; y: 14
@@ -6074,15 +6079,27 @@ Scope {
                             color: pal.fg
                             font.family: pal.fam; font.pixelSize: 15; font.weight: Font.DemiBold
                         }
+                        // Apply button: prominent, accent when there is something to apply
                         Rectangle {
-                            id: wpChoose
+                            id: wpApplyBtn
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 84; height: 30; radius: 10
+                            width: 92; height: 30; radius: 10
+                            color: root.wpShown.length > 0 ? pal.accent : pal.btnOff
+                            Text { anchors.centerIn: parent; text: "Apply"; color: root.wpShown.length > 0 ? "#ffffff" : pal.fg3; font.family: pal.fam; font.pixelSize: 12; font.weight: Font.Medium }
+                            MouseArea { id: wpApplyMa; anchors.fill: parent; hoverEnabled: true; onClicked: { var ok = wpGrid.currentIndex >= 0 && wpGrid.currentIndex < root.wpShown.length; if (ok) { root.wpApply(root.wpShown[wpGrid.currentIndex].path); root.wpOpen = false; } } }
+                        }
+                        // Choose folder
+                        Rectangle {
+                            id: wpChoose
+                            anchors.right: wpApplyBtn.left; anchors.rightMargin: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 92; height: 30; radius: 10
                             color: wpChooseMa.containsMouse ? pal.btnHover : pal.btnOff
                             Text { anchors.centerIn: parent; text: "Choose\u2026"; color: pal.fg; font.family: pal.fam; font.pixelSize: 12; font.weight: Font.Medium }
                             MouseArea { id: wpChooseMa; anchors.fill: parent; hoverEnabled: true; onClicked: root.wpPickFolder() }
                         }
+                        // folder path input
                         Rectangle {
                             anchors.left: wpTitle.right; anchors.leftMargin: 18
                             anchors.right: wpChoose.left; anchors.rightMargin: 10
@@ -6149,11 +6166,30 @@ Scope {
                             MouseArea { anchors.fill: parent; onClicked: { root.wpQuery = ""; wpGrid.forceActiveFocus(); } }
                         }
                     }
+                    // ── filter chips (serpantinum style) ──
+                    Row {
+                        id: wpFilterRow
+                        x: 22; y: 96
+                        spacing: 8
+                        width: parent.width - 44; height: 30
+                        Rectangle {
+                            width: 52; height: 30; radius: 15
+                            color: root.wpFilter === "all" ? pal.accent : pal.btnOff
+                            Text { anchors.centerIn: parent; text: "All"; color: root.wpFilter === "all" ? "#ffffff" : pal.fg; font.family: pal.fam; font.pixelSize: 11; font.weight: Font.Medium }
+                            MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: root.wpFilter = "all" }
+                        }
+                        Rectangle {
+                            width: 110; height: 30; radius: 15
+                            color: root.wpFilter === "favourites" ? pal.accent : pal.btnOff
+                            Text { anchors.centerIn: parent; text: "Favourites"; color: root.wpFilter === "favourites" ? "#ffffff" : pal.fg; font.family: pal.fam; font.pixelSize: 11; font.weight: Font.Medium }
+                            MouseArea { anchors.fill: parent; hoverEnabled: true; onClicked: root.wpFilter = "favourites" }
+                        }
+                    }
                     Text {
                         id: wpSub
-                        anchors.left: wpSearchBox.right; anchors.leftMargin: 14
+                        anchors.left: parent.left; anchors.leftMargin: 22
                         anchors.right: parent.right; anchors.rightMargin: 22
-                        y: 54; height: 28
+                        y: 134; height: 28
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
                         text: root.wpStatus !== "" ? root.wpStatus
@@ -6167,12 +6203,12 @@ Scope {
                     // ── grid ──
                     GridView {
                         id: wpGrid
-                        x: 16; y: 94
-                        width: parent.width - 38; height: parent.height - 94 - 14
+                        x: 16; y: 168
+                        width: parent.width - 32; height: parent.height - 168 - 14
                         clip: true
-                        readonly property int cols: Math.max(2, Math.floor(width / 210))
-                        cellWidth: Math.floor(width / cols)
-                        cellHeight: Math.round(cellWidth * 0.64)
+                        readonly property int cols: Math.max(2, Math.floor((width - 12) / 300))
+                        cellWidth: Math.floor((width - 12) / cols)
+                        cellHeight: Math.round(cellWidth * 1.05)
                         model: root.wpShown
                         currentIndex: 0
                         keyNavigationEnabled: true
@@ -6193,6 +6229,7 @@ Scope {
                             }
                         }
 
+
                         delegate: Item {
                             id: wc
                             required property int index
@@ -6200,147 +6237,122 @@ Scope {
                             width: wpGrid.cellWidth; height: wpGrid.cellHeight
                             readonly property bool sel: wpGrid.currentIndex === index
                             readonly property bool cur: root.wallpaperPath === modelData.path
+                            property bool hov: wcMa.containsMouse
+
                             Item {
                                 id: wcBox
                                 anchors.fill: parent
-                                anchors.margins: 5
-                                Item {
-                                    id: wcMask
+                                anchors.margins: 8
+
+                                // serpantinum-style card: image fills card, glass overlay at bottom
+                                Rectangle {
+                                    id: wcCard
                                     anchors.fill: parent
-                                    visible: false
-                                    layer.enabled: true
-                                    layer.smooth: true
-                                    Rectangle { anchors.fill: parent; radius: 12; color: "black" }
-                                }
-                                Item {
-                                    anchors.fill: parent
-                                    layer.enabled: true
-                                    layer.smooth: true
-                                    layer.effect: MultiEffect {
-                                        maskEnabled: true
-                                        maskSource: wcMask
-                                        maskThresholdMin: 0.5
-                                        maskSpreadAtMin: 1.0
-                                    }
-                                    Rectangle { anchors.fill: parent; color: pal.btnOff }
+                                    radius: 20
+                                    clip: true
+                                    color: "transparent"
+                                    border.width: sel ? 4 : (cur ? 2 : 0)
+                                    border.color: sel ? pal.accent : (cur ? "white" : "transparent")
+                                    Behavior on border.color { NumberAnimation { duration: 150 } }
+                                    Behavior on border.width { NumberAnimation { duration: 150 } }
+
                                     Image {
                                         anchors.fill: parent
                                         source: root.fileUrl(wc.modelData.path)
-                                        sourceSize.width: 420
+                                        sourceSize.width: Math.ceil(wpGrid.cellWidth * 2)
                                         fillMode: Image.PreserveAspectCrop
                                         asynchronous: true
                                         cache: true
                                         smooth: true
                                     }
+
+                                    // hover overlay
+                                    Rectangle {
+                                        visible: hov
+                                        anchors.fill: parent
+                                        radius: 20
+                                        color: Qt.rgba(0, 0, 0, 0.15)
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                        opacity: hov ? 1 : 0
+                                    }
+
+                                    // current wallpaper badge (top-left)
+                                    Rectangle {
+                                        visible: cur
+                                        anchors.left: parent.left; anchors.top: parent.top
+                                        anchors.margins: 12
+                                        width: 22; height: 22; radius: 11
+                                        color: pal.accent
+                                        Text { anchors.centerIn: parent; text: "\u25cf"; color: "#ffffff"; font.pixelSize: 12; font.weight: Font.Bold }
+                                    }
+
+                                    // favourite star (top-right)
+                                    Rectangle {
+                                        anchors.right: parent.right; anchors.top: parent.top
+                                        anchors.margins: 12
+                                        width: 30; height: 30; radius: 15
+                                        color: wc.modelData.fav ? "#ffd60a" : Qt.rgba(0, 0, 0, 0.4)
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: "\u2605"
+                                            color: "#ffffff"
+                                            font.pixelSize: 16
+                                        }
+                                        MouseArea {
+                                            id: wcStarMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: root.wpToggleFav(wc.modelData.path)
+                                        }
+                                    }
+
+                                    // name overlay at bottom
                                     Rectangle {
                                         anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-                                        height: 26
-                                        color: Qt.rgba(0, 0, 0, 0.5)
-                                        opacity: (wc.sel || wcMa.containsMouse) ? 1 : 0
-                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                        height: 44
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "transparent" }
+                                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.55) }
+                                        }
                                         Text {
-                                            anchors.fill: parent
-                                            anchors.leftMargin: 10; anchors.rightMargin: 36
-                                            verticalAlignment: Text.AlignVCenter
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.left: parent.left; anchors.leftMargin: 14
+                                            anchors.right: parent.right; anchors.rightMargin: 34
                                             elide: Text.ElideRight
                                             text: wc.modelData.name
-                                            color: "white"
-                                            font.family: pal.fam; font.pixelSize: 11
+                                            color: "#ffffff"
+                                            font.family: pal.fam; font.pixelSize: 12; font.weight: Font.Medium
                                         }
                                     }
                                 }
-                                // selection / current-wallpaper ring
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: 12
-                                    color: "transparent"
-                                    border.width: wc.sel ? 3 : (wc.cur ? 2 : 0)
-                                    border.color: wc.sel ? pal.accent : "white"
-                                }
+
                                 MouseArea {
                                     id: wcMa
                                     anchors.fill: parent
                                     hoverEnabled: true
-                                    onPositionChanged: wpGrid.currentIndex = wc.index      // real mouse movement only, so the keyboard keeps control
+                                    onPositionChanged: wpGrid.currentIndex = wc.index
                                     onClicked: { root.wpApply(wc.modelData.path); root.wpOpen = false; }
                                 }
-                                // favourite star
-                                Rectangle {
-                                    anchors.right: parent.right; anchors.top: parent.top
-                                    anchors.margins: 7
-                                    width: 26; height: 26; radius: 13
-                                    visible: wc.modelData.fav || wcMa.containsMouse || wcStarMa.containsMouse
-                                    color: Qt.rgba(0, 0, 0, wcStarMa.containsMouse ? 0.62 : 0.45)
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: wc.modelData.fav ? "\u2605" : "\u2606"
-                                        color: wc.modelData.fav ? "#ffd60a" : "white"
-                                        font.pixelSize: 15
-                                    }
-                                    MouseArea {
-                                        id: wcStarMa
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        onClicked: root.wpToggleFav(wc.modelData.path)
-                                    }
-                                }
                             }
                         }
                     }
-                    // ── scrollbar ──
+                    // empty state
                     Item {
-                        id: wpTrack
-                        visible: wpGrid.contentHeight > wpGrid.height + 1
-                        x: parent.width - 16; y: wpGrid.y + 2
-                        width: 10; height: wpGrid.height - 4
-                        readonly property real ratio: Math.min(1, wpGrid.visibleArea.heightRatio)
-                        readonly property real thumbH: Math.max(32, ratio * height)
-                        readonly property real maxY: Math.max(1, height - thumbH)
-                        Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 4; height: parent.height; radius: 2; color: pal.track; opacity: 0.6 }
-                        MouseArea {                      // click the track to jump
-                            anchors.fill: parent
-                            onPressed: mouse => wpTrack.jumpTo(mouse.y - wpTrack.thumbH / 2)
-                        }
-                        function jumpTo(ty) {
-                            var f = Math.max(0, Math.min(1, ty / wpTrack.maxY));
-                            wpGrid.contentY = wpGrid.originY + f * Math.max(0, wpGrid.contentHeight - wpGrid.height);
-                        }
-                        Rectangle {
-                            id: wpThumb
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: wpThumbMa.containsMouse || wpThumbMa.drag.active ? 7 : 5
-                            height: wpTrack.thumbH
-                            radius: width / 2
-                            color: wpThumbMa.drag.active ? pal.fg2 : pal.fg3
-                            Behavior on width { NumberAnimation { duration: 100 } }
-                            Binding {
-                                target: wpThumb; property: "y"
-                                when: !wpThumbMa.drag.active
-                                value: (1 - wpTrack.ratio) > 0.0001 ? Math.max(0, Math.min(wpTrack.maxY, wpGrid.visibleArea.yPosition / (1 - wpTrack.ratio) * wpTrack.maxY)) : 0
-                            }
-                            MouseArea {
-                                id: wpThumbMa
-                                anchors.fill: parent
-                                anchors.margins: -4
-                                hoverEnabled: true
-                                drag.target: wpThumb
-                                drag.axis: Drag.YAxis
-                                drag.minimumY: 0
-                                drag.maximumY: wpTrack.maxY
-                                onPositionChanged: if (drag.active) wpTrack.jumpTo(wpThumb.y)
-                            }
-                        }
-                    }
-                    Text {
                         visible: root.wpShown.length === 0
                         anchors.centerIn: parent
                         width: parent.width - 80
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.WordWrap
-                        text: root.wpQuery !== "" ? "No wallpapers match \u201c" + root.wpQuery + "\u201d"
-                              : "No images in " + root.wpDirEff + "\nDrop some in, or pick another folder with Choose\u2026"
-                        color: pal.fg2
-                        font.family: pal.fam; font.pixelSize: 13
+                        Glyph { anchors.horizontalCenter: parent.horizontalCenter; width: 40; height: 40; kind: "folder"; color: pal.fg3 }
+                        Text {
+                            anchors.top: parent.top; anchors.topMargin: 48
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            text: root.wpQuery !== "" ? "No wallpapers match \u201c" + root.wpQuery + "\u201d"
+                                  : "No images in " + root.wpDirEff + "\nDrop some in, or pick another folder with Choose\u2026"
+                            color: pal.fg2
+                            font.family: pal.fam; font.pixelSize: 13
+                        }
                     }
                 }
             }
