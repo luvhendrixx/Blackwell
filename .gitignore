@@ -21,3 +21,4 @@ nohup.out
 .config/gtk-3.0/bookmarks
 
 .gitconfig
+home/.gitconfig   # personal git identity/credentials — never version controlled
