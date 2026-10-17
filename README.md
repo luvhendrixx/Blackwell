@@ -44,6 +44,7 @@ This, just to name a few...
 - Links every config
 - setups up stuff like keyd and so on
 - auto-detects your ESP mnt pint and root UUID, sets up the bootloader, registers it in firmware and generates a boot entry for the installed kernel
+- follow the small instructions once its done
 
 From there **Reboot** and you ought to be good to go.
 
