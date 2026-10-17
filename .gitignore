@@ -20,5 +20,45 @@ nohup.out
 # nautilus stuff
 .config/gtk-3.0/bookmarks
 
+# --- PERSONAL IDENTITY & SECRETS — NEVER version control ---
 .gitconfig
-home/.gitconfig   # personal git identity/credentials — never version controlled
+home/.gitconfig    # your email/name + gh credential helper
+.env
+.env.*
+.env.local
+*.env
+!.env.example      # allow a template if you ever add one
+*.secret
+*.credentials
+credentials*
+.secrets
+.netrc
+netrc
+auth/
+
+# SSH / GPG / private keys
+*.pem
+*.key
+*.ppk
+id_*
+id_*.pub
+*.gpg
+*.asc
+*.pgp
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Language / package caches (add as you adopt them)
+node_modules/
+.pnpm-store/
+.yarn/
