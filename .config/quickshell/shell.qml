@@ -33,7 +33,7 @@ ShellRoot {
 
         // the single settings window lives in MacDock.qml; everything else reaches it through here
         property var bar: macBar
-        property var dock: null
+        property var dock: macDock
         property var widgets: macWidgets      // desktop widgets (Settings → Widgets reaches them through here)
         function openSettings(pane) { if (macDock) macDock.openPrefs(pane); }
 
@@ -249,6 +249,7 @@ ShellRoot {
     IpcHandler {
         target: "settings"
         function open(): void { macDock.openPrefs("general"); }
+        function openPane(pane: string): void { macDock.openPrefs(pane); }
     }
     // qs -c <config> ipc call glass captures false   (true to switch window previews back on)
     IpcHandler {

@@ -26,7 +26,8 @@ PanelWindow {
         { icon: "\uf03e", name: "Wallpaper", cmd: ["sh", "-c", "qs -n -p ~/.config/quickshell/hyprquickpaper"] },
         { icon: "\uf0f3", name: "Notifs",    cmd: ["qs", "ipc", "call", "notifications", "toggle"] },
         { icon: "\uf0ae", name: "To-do",     cmd: ["qs", "ipc", "call", "todo", "toggle"] },
-        { icon: "\udb80\udd68", name: "Opacity",   cmd: ["sh", "-c", "$HOME/.config/hypr/scripts/opacity.sh"] }
+        { icon: "\udb80\udd68", name: "Opacity",   cmd: ["sh", "-c", "$HOME/.config/hypr/scripts/opacity.sh"] },
+        { icon: "\uf031", name: "Widgets",   cmd: ["qs", "ipc", "call", "settings", "openPane", "widgets"] }
     ]
 
     anchors { top: true; bottom: true; left: true; right: true }
