@@ -51,7 +51,7 @@ alias chat="irssi"
 alias fm="spf"
 alias zed="zeditor"
 alias ff="fastfetch"
-alias code="codium"
+# alias code="codium"
 
 # ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
 gitstats() {
