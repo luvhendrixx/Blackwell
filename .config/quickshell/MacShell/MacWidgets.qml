@@ -257,9 +257,13 @@ Scope {
                     var p = t.substring(3);
                     if (root.pickTargetId === "") { if (!root.addWidget("image", "normal", root.pickTargetSize, p)) root.pickError = "No free space on the desktop for another widget."; }
                     else root.setSource(root.pickTargetId, p);
+                    if (root.pickError !== "")
+                        Quickshell.execDetached(["notify-send", "-a", "macwidgets", "-u", "normal", "Add Widget — image", root.pickError]);
                 } else if (t.indexOf("ERR:") === 0) {
                     root.pickError = t.substring(4);
                     console.log("[macwidgets] image:", root.pickError);
+                    // surface failures so a missing tool never looks like a dead button
+                    Quickshell.execDetached(["notify-send", "-a", "macwidgets", "-u", "normal", "Add Widget — image", root.pickError]);
                 }
             }
         }
