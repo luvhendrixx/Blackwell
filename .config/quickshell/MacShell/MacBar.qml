@@ -1587,11 +1587,6 @@ Scope {
         onExited: root.btBusy = ""
     }
     Timer { id: btAfter; interval: 1200; onTriggered: { root.scanBt(); root.refreshBt(); } }
-    Timer {
-        interval: 4000; repeat: true
-        running: ui.pop === "bt"
-        onTriggered: root.scanBt()
-    }
     readonly property bool airplane: !wifiOn && !btOn
     function toggleAirplane() {
         sh(airplane ? "rfkill unblock all" : "rfkill block all");
@@ -1916,17 +1911,7 @@ Scope {
         else spotRequest++;                       // every bar window listens and the focused screen opens Spotlight
     }
     function spotOpen(mode) { spotWant = mode; spotRequest++; }
-    IpcHandler {
-        target: "spotlight"
-        function toggle(): void { root.search(); }
-        function clipboard(): void { root.spotOpen("clip"); }
-        function emoji(): void { root.spotOpen("emoji"); }
-        function apps(): void { root.spotOpen("apps"); }
-    }
-    IpcHandler {
-        target: "notification"
-        function dismiss(): void { root.notifClear(); }
-    }
+    // NOTE: "spotlight" / "notification" IPC targets are registered once in shell.qml — do not duplicate them here.
 
     // ═════════════ CLIPBOARD HISTORY + EMOJI (Spotlight panels) ═════════════
     // History comes from cliphist; its `wl-paste --watch` watchers are started here (unless you already run them), and every
@@ -2279,7 +2264,7 @@ Scope {
     }
     function actionItems(q) {
         var all = [
-            { title: "Lock Screen", glyph: "lock", run: function () { sh("hyprlock"); } },
+            { title: "Lock Screen", glyph: "lock", run: function () { sh("~/.config/quickshell/MacLock/lock-via-ipc.sh"); } },
             { title: "Sleep", glyph: "moon", run: function () { sh("systemctl suspend"); } },
             { title: "System Settings\u2026", glyph: "gear", run: function () { sh("hyprmod"); } },
             { title: "Log Out", glyph: "logout", confirm: true, run: function () { root.logOut(); } },
@@ -2352,7 +2337,7 @@ Scope {
             m.push(mi("System Settings\u2026", "", function () { sh("hyprmod"); }));
             m.push(mi("Bar Settings\u2026", "", function () { root.openSettings(); }));
             m.push(msep());
-            m.push(mi("Lock Screen", "", function () { sh("hyprlock"); }));
+            m.push(mi("Lock Screen", "", function () { sh("~/.config/quickshell/MacLock/lock-via-ipc.sh"); }));
             m.push(mi("Sleep", "", function () { sh("systemctl suspend"); }));
             m.push(msep());
             m.push(mc("Restart\u2026", function () { sh("systemctl reboot"); }));

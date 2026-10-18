@@ -80,6 +80,8 @@ power-profiles-daemon
 python-fonttools
 qt5-wayland
 qt6-wayland
+qt6-shadertools
+qt6-svg
 quickshell
 rofi
 rofimoji
