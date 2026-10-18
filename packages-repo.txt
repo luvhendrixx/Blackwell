@@ -80,6 +80,8 @@ power-profiles-daemon
 python-fonttools
 qt5-wayland
 qt6-wayland
+qt6-shadertools
+qt6-svg
 quickshell
 rofi
 rofimoji
@@ -136,3 +138,12 @@ go
 uv
 fzf
 git-delta
+# MacShell runtime deps (added Oct 2026)
+wl-clipboard
+wf-recorder
+hyprpicker
+hyprsunset
+blueman
+zenity
+inter-font
+ttf-nerd-fonts-symbols
