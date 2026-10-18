@@ -147,3 +147,6 @@ blueman
 zenity
 inter-font
 ttf-nerd-fonts-symbols
+# MacLock deps (added Oct 2026)
+qt6-multimedia
+pipewire-audio
