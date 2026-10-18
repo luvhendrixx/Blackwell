@@ -603,7 +603,15 @@ Item {
     // ═════════════ COVER HAND-OVER ═════════════
     // Two picture slots. A new cover loads into the back slot; once it's there (or after 1.5 s) the bubble's cover
     // "burns" over to it (burn.frag) and the blurred album background cross-fades, both in step.
-    readonly property string coverUrl: media.pl && media.pl.trackArtUrl ? media.pl.trackArtUrl : ""
+    // Escape the art URL like the desktop PlayerWidget does: some players expose mpris:artUrl as a bare
+    // filesystem path (and paths with # or ? parse as URL fragments, silently breaking the Image). Without
+    // this the lock screen gets no cover even though the desktop widget does.
+    function fileUrl(p) {
+        if (!p) return "";
+        if (p.indexOf("/") === 0) return "file://" + encodeURI(p).replace(/#/g, "%23").replace(/\?/g, "%3F");
+        return p;
+    }
+    readonly property string coverUrl: media.pl && media.pl.trackArtUrl ? fileUrl(media.pl.trackArtUrl) : ""
     property int coverIdx: 0
     property real coverProg: 1
     property real coverSeed: 0
