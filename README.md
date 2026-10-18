@@ -147,4 +147,4 @@ It's also 'reasonably' configured in that the snapshots don't "hog" your storage
 ## Extras
 
 This setup is based off
-[43PR's dots](https://github.com/43PR/dotfiles) on Github. And thank you 43PR (and Co) for the incredible and easy to use setup and xp
+[43PR's dots](https://github.com/43PR/dotfiles) and [O-ss](https://github.com/0-ss/MacShell) on Github. And thank you to both for the incredible and easy to use setup and xp
