@@ -117,6 +117,7 @@ do_pull() {
     fi
     if (cd "$REPO_DIR" && git pull --ff-only); then
       ok "Dotfiles pulled"
+      do_new_packages "$local_head"
       if [[ $STASHED -eq 1 ]]; then
         log "Restoring stashed changes..."
         (cd "$REPO_DIR" && git stash pop) || \
@@ -169,6 +170,59 @@ do_log() {
   echo
   echo -e "${BOLD}Remote (last 5):${NC}"
   (cd "$REPO_DIR" && git log --oneline -5 '@{u}' 2>/dev/null || echo "  (none)")
+}
+
+# ─── newly added packages (delta install after a pull) ─────────────────────
+# If an update adds packages to packages-repo.txt / packages-aur.txt, they need
+# to be installed too — otherwise new dotfiles features fail silently. Compute
+# the delta between the OLD commit's lists and the pulled ones and install only
+# what's new. Failures are non-fatal (warn) so an update never bricks itself.
+do_new_packages() {
+  local old_head="$1"
+  local added_repo added_aur all_new repo_pkgs="" strays=""
+  cd "$REPO_DIR" || return 1
+
+  added_repo=$(comm -13 \
+    <(git show "$old_head:packages-repo.txt" 2>/dev/null | grep -vE '^[[:space:]]*(#|$)' | sort -u) \
+    <(grep -vE '^[[:space:]]*(#|$)' packages-repo.txt 2>/dev/null | sort -u) || true)
+  added_aur=$(comm -13 \
+    <(git show "$old_head:packages-aur.txt" 2>/dev/null | grep -vE '^[[:space:]]*(#|$)' | sort -u) \
+    <(grep -vE '^[[:space:]]*(#|$)' packages-aur.txt 2>/dev/null | sort -u) || true)
+  cd - > /dev/null
+
+  all_new=$(printf '%s\n' $added_repo $added_aur | tr '\n' ' ')
+  if [[ -z ${all_new// /} ]]; then
+    ok "No new packages to install"
+    return 0
+  fi
+
+  log "New packages in the update: ${all_new// /', '}"
+  # split against the sync databases, like install.sh does
+  local sync_db
+  sync_db=$(pacman -Slq 2>/dev/null)
+  for p in $added_repo $added_aur; do
+    if grep -qxF "$p" <<< "$sync_db"; then
+      repo_pkgs="$repo_pkgs $p"
+    else
+      strays="$strays $p"
+    fi
+  done
+
+  if [[ -n ${repo_pkgs// /} ]]; then
+    log "Installing new packages from official repos"
+    sudo pacman -S --needed --noconfirm $repo_pkgs || warn "Some new packages failed to install — try manually"
+  fi
+  if [[ -n ${strays// /} ]]; then
+    local helper
+    if command -v yay >/dev/null 2>&1; then helper=yay
+    elif command -v paru >/dev/null 2>&1; then helper=paru
+    else
+      warn "No AUR helper found — install these manually: $strays"
+      return 0
+    fi
+    log "Installing new AUR packages with $helper"
+    $helper -S --needed --noconfirm $strays || warn "Some new AUR packages failed to install — try manually"
+  fi
 }
 
 # ─── broken symlinks ────────────────────────────────────────────────────────

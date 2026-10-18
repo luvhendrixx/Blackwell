@@ -138,3 +138,12 @@ go
 uv
 fzf
 git-delta
+# MacShell runtime deps (added Oct 2026)
+wl-clipboard
+wf-recorder
+hyprpicker
+hyprsunset
+blueman
+zenity
+inter-font
+ttf-nerd-fonts-symbols
