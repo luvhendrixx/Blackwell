@@ -1787,6 +1787,30 @@ Scope {
                     }
                 }
 
+                // ── global widget size ──
+                SCard {
+                    t: pal
+                    SRow {
+                        t: pal
+                        title: "Widget size"
+                        subtitle: "Scales every desktop widget and the grid; placed widgets re-snap automatically."
+                        SSlider {
+                            t: pal; from: 60; to: 150; stepSize: 5
+                            value: Math.round((wp.wd ? wp.wd.widgetScale : 1) * 100)
+                            leftLabel: "Small"; rightLabel: "Large"
+                            onMoved: v => { if (wp.wd) wp.wd.widgetScale = v / 100; }
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.right: parent.right
+                            text: Math.round((wp.wd ? wp.wd.widgetScale : 1) * 100) + "%"
+                            color: pal.text2
+                            font.family: pal.fam
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+
                 // ── widget gallery (only while editing): every style x size, with − / + ──
                 Repeater {
                     model: ["liquid", "normal"]
@@ -2158,6 +2182,100 @@ Scope {
                                                     Rectangle { anchors.centerIn: parent; width: 1.6; height: 9; radius: 0.8; color: "white" }
                                                     MouseArea { id: playerPlusMa; anchors.fill: parent
                                                         onClicked: if (wp.wd) wp.wd.addWidget("player", playerStyle.modelData, playerTile.modelData) }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── Image gallery: picture widgets in Normal style ──
+                Repeater {
+                    model: ["normal"]
+                    delegate: Column {
+                        id: imgStyle
+                        required property string modelData
+                        width: parent.width
+                        spacing: 10
+                        visible: wp.editing
+                        SLabel {
+                            t: pal
+                            header: true
+                            text: "Image — Normal"
+                        }
+                        SCard {
+                            t: pal
+                            Item {
+                                width: parent.width
+                                height: imgFlow.height + 28
+                                Flow {
+                                    id: imgFlow
+                                    x: 18; y: 14
+                                    width: parent.width - 36
+                                    spacing: 22
+                                    Repeater {
+                                        model: ["small", "medium", "large"]
+                                        delegate: Item {
+                                            id: imgTile
+                                            required property string modelData
+                                            readonly property real sc: 0.5
+                                            readonly property real pw: (modelData === "small" ? 168 : 358) * sc
+                                            readonly property real ph: (modelData === "large" ? 354 : 168) * sc
+                                            width: Math.max(pw, 84)
+                                            height: ph + 62
+                                            readonly property int n: { var r = wp.wd ? wp.wd.rev : 0; return wp.wd ? wp.wd.count("image", imgStyle.modelData, modelData) : 0; }
+
+                                            ImageWidget {
+                                                x: (imgTile.width - imgTile.pw) / 2
+                                                scaleF: imgTile.sc
+                                                style: imgStyle.modelData
+                                                size: imgTile.modelData
+                                                fam: pal.fam
+                                                darkGlass: pal.dark
+                                                editing: true
+                                                source: Quickshell.env("HOME") + "/dotfiles/Assets/blackwell.png"
+                                            }
+                                            Text {
+                                                y: imgTile.ph + 8
+                                                width: parent.width
+                                                horizontalAlignment: Text.AlignHCenter
+                                                text: imgTile.modelData === "small" ? "Small" : (imgTile.modelData === "medium" ? "Medium" : "Large")
+                                                color: pal.text
+                                                font.family: pal.fam
+                                                font.pixelSize: 12
+                                            }
+                                            Row {
+                                                y: imgTile.ph + 30
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                spacing: 8
+                                                Rectangle {
+                                                    width: 22; height: 22; radius: 11
+                                                    opacity: imgTile.n > 0 ? 1 : 0.4
+                                                    color: imgMinusMa.pressed ? pal.buttonPressed : pal.button
+                                                    border.width: 1; border.color: pal.buttonBorder
+                                                    Rectangle { anchors.centerIn: parent; width: 9; height: 1.6; radius: 0.8; color: pal.text }
+                                                    MouseArea { id: imgMinusMa; anchors.fill: parent; enabled: imgTile.n > 0
+                                                        onClicked: if (wp.wd) wp.wd.removeLast("image", imgStyle.modelData, imgTile.modelData) }
+                                                }
+                                                Text {
+                                                    width: 18
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    text: imgTile.n
+                                                    color: pal.text2
+                                                    font.family: pal.fam
+                                                    font.pixelSize: 12
+                                                }
+                                                Rectangle {
+                                                    width: 22; height: 22; radius: 11
+                                                    color: imgPlusMa.pressed ? Qt.darker(pal.accent, 1.15) : pal.accent
+                                                    Rectangle { anchors.centerIn: parent; width: 9; height: 1.6; radius: 0.8; color: "white" }
+                                                    Rectangle { anchors.centerIn: parent; width: 1.6; height: 9; radius: 0.8; color: "white" }
+                                                    MouseArea { id: imgPlusMa; anchors.fill: parent
+                                                        onClicked: if (wp.wd) wp.wd.addWidget("image", imgStyle.modelData, imgTile.modelData) }
                                                 }
                                             }
                                         }
