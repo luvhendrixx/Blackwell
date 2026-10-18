@@ -245,6 +245,32 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
         warn "MacLock needs /etc/pam.d/hyprlock (from the hyprlock package) for PAM password checks."
         warn "  Install it: sudo pacman -S hyprlock   (it's already in packages-repo.txt)"
     fi
+    # ── MacLock: compile the fragment shaders (liquidglass, burn, …) ───────
+    # The QML references "*.frag.qsb" directly. Without them everything drawn
+    # through ShaderEffect — cover art, contour glow, glass refraction —
+    # silently renders nothing, so the lock screen loses its cover art.
+    if [ "$LINK_ONLY" = 0 ]; then
+        if [ "$DRY_RUN" = 1 ]; then
+            echo "  would run: compile MacLock .frag -> .frag.qsb shaders"
+        else
+            QSB=$(command -v qsb 2>/dev/null || echo /usr/lib/qt6/bin/qsb)
+            if [ -x "$QSB" ]; then
+                for frag in "$REPO_DIR"/.config/quickshell/MacLock/*.frag; do
+                    qsb_file="${frag%.frag}.frag.qsb"
+                    # (re)build only when missing or older than its source
+                    if [ ! -f "$qsb_file" ] || [ "$frag" -nt "$qsb_file" ]; then
+                        if "$QSB" --qt6 "$frag" -o "$qsb_file" 2>/dev/null; then
+                            say "MacLock: compiled ${qsb_file##*/}"
+                        else
+                            warn "MacLock: failed to compile ${frag##*/}"
+                        fi
+                    fi
+                done
+            else
+                warn "qsb not found (qt6-shadertools) — MacLock cover-art/glass effects would be missing."
+            fi
+        fi
+    fi
     say "MacLock ready: SUPER + L locks via ~/.config/quickshell/MacLock/lock-via-ipc.sh"
 fi
 
