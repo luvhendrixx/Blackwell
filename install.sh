@@ -236,6 +236,16 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     run gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Ice'
     run gsettings set org.gnome.desktop.interface cursor-size 15
     run xdg-mime default org.gnome.Nautilus.desktop inode/directory
+
+    # ── MacLock: PAM stack check ────────────────────────────────────────────
+    # MacLock checks passwords with PAM (/etc/pam.d/hyprlock, provided by the
+    # hyprlock package). Warn if it's missing so the lock screen doesn't fail
+    # silently on first use.
+    if [ ! -f /etc/pam.d/hyprlock ]; then
+        warn "MacLock needs /etc/pam.d/hyprlock (from the hyprlock package) for PAM password checks."
+        warn "  Install it: sudo pacman -S hyprlock   (it's already in packages-repo.txt)"
+    fi
+    say "MacLock ready: SUPER + L locks via ~/.config/quickshell/MacLock/lock-via-ipc.sh"
 fi
 
 # ── 5. bootloader ────────────────────────────────────────────────────────────
@@ -311,4 +321,6 @@ Setup complete.
     install their own boot entries automatically.
   • Keymap cheat sheet: click the  key in the bar, or run
     ~/.config/hypr/scripts/keymaps.sh
+  • MacLock: SUPER + L locks the session via ~/.config/quickshell/MacLock/lock-via-ipc.sh
+    (PAM password check against /etc/pam.d/hyprlock; runs as its own Quickshell process)
 EOF
