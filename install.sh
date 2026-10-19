@@ -115,7 +115,7 @@ if [ "$LINK_ONLY" = 0 ]; then
     # people who trimmed the list. Failure here is not fatal.
     say "Ensuring helper tools are present"
     # shellcheck disable=SC2046
-    run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick \
+    run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick libvips \
         || warn "Some helper tools failed to install."
 fi
 

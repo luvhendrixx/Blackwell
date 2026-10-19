@@ -9,6 +9,11 @@ set -uo pipefail
 
 WALLS="$HOME/Pictures/Wallpapers"
 
+# Build the wallpaper picker's preview cache in the background. This runs even
+# when a wallpaper is already saved, so the first SUPER+D after login paints
+# from small cached thumbnails instead of decoding the originals.
+setsid -f bash "$HOME/.config/quickshell/hyprquickpaper/cache.sh" >/dev/null 2>&1 || true
+
 # awwa's saved state: leave an existing selection untouched.
 if [ -f "$HOME/.config/awww/state.json" ] && [ -s "$HOME/.config/awww/state.json" ]; then
     exit 0

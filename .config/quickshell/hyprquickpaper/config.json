@@ -3,5 +3,7 @@
     "cache_path": "$HOME/.cache/quickshell/thumbs/",
     "number_of_pictures": 10,
     "border_color": "#e8e2d5",
-    "cache_batch_size": 20
+    "cache_batch_size": 4,
+    "thumbnail_size": 1280,
+    "thumbnail_quality": 82
 }
