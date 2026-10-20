@@ -64,6 +64,8 @@ hl.bind(mainMod .. " + O", hl.dsp.exec_cmd(home .. "/.config/hypr/scripts/opacit
 
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd("qs ipc call notifications toggle")) -- Notifications
 
+hl.bind("ALT + R", hl.dsp.exec_cmd("qs ipc call reminders toggle")) -- Reminders (add / view / snooze)
+
 hl.bind(mainMod .. " + C", universal_clipboard_shortcut("CTRL", "C", "CTRL SHIFT", "C")) -- Universal copy
 
 -- Mouse move/resize window
