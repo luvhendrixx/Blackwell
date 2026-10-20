@@ -479,6 +479,16 @@ Scope {
                 Rectangle { x: 8.5; y: 1.5; width: 6; height: 6; radius: 1.6; color: "white" }
                 Rectangle { x: 1.5; y: 8.5; width: 13; height: 6; radius: 1.8; color: "white" }
             }
+            // reminders (checklist)
+            Item {
+                visible: gl.kind === "reminders"; anchors.fill: parent
+                Rectangle { x: 1.5; y: 2.4; width: 3; height: 3; radius: 1.5; color: "white" }
+                Rectangle { x: 6.3; y: 2.9; width: 8.5; height: 2; radius: 1; color: "white" }
+                Rectangle { x: 1.5; y: 6.8; width: 3; height: 3; radius: 1.5; color: "white" }
+                Rectangle { x: 6.3; y: 7.3; width: 8.5; height: 2; radius: 1; color: "white" }
+                Rectangle { x: 1.5; y: 11.2; width: 3; height: 3; radius: 1.5; color: "white" }
+                Rectangle { x: 6.3; y: 11.7; width: 5.6; height: 2; radius: 1; color: "white" }
+            }
             // about
             Item {
                 visible: gl.kind === "about"; anchors.fill: parent
@@ -530,6 +540,8 @@ Scope {
               keys: "pinned apps keep remove reset" },
             { id: "widgets",    name: "Widgets",      glyph: "widgets",    c1: "#FF6482", c2: "#FF375F",
               keys: "desktop widget weather clock calendar player music artwork album glass edit add remove" },
+            { id: "reminders",  name: "Reminders",    glyph: "reminders",  c1: "#FFB340", c2: "#FF7A00",
+              keys: "reminder alert due time schedule notify menu bar icon badge snooze done" },
             { id: "about",      name: "About",        glyph: "about",      c1: "#A7A7AD", c2: "#7C7C82",
               keys: "version reset config folder macdock macbar macshell" }
         ]
@@ -896,7 +908,7 @@ Scope {
                     x: 22
                     y: 6
                     width: flick.width - 44
-                    sourceComponent: [paneGeneral, paneDock, paneMenuBar, paneAppearance, paneBehavior, paneApps, paneWidgets, paneAbout][prefsWindow.cur]
+                    sourceComponent: [paneGeneral, paneDock, paneMenuBar, paneAppearance, paneBehavior, paneApps, paneWidgets, paneReminders, paneAbout][prefsWindow.cur]
                     onLoaded: fadeIn.restart()
                 }
             }
@@ -1163,6 +1175,11 @@ Scope {
                     SRow {
                         t: pal; title: "Notifications"
                         SSwitch { t: pal; checked: root.bar ? root.bar.barWidgetEnabled("notifications") : true; onToggled: v => { if (root.bar) root.bar.setBarWidget("notifications", v); } }
+                    }
+                    SRow {
+                        t: pal; title: "Reminders"
+                        subtitle: "Checklist icon; click it or press Alt + R to see and add reminders"
+                        SSwitch { t: pal; checked: root.bar ? root.bar.barWidgetEnabled("reminders") : true; onToggled: v => { if (root.bar) root.bar.setBarWidget("reminders", v); } }
                     }
                     SRow {
                         t: pal; title: "Wi-Fi and network"
@@ -2427,6 +2444,198 @@ Scope {
                 SLabel {
                     t: pal
                     text: "Liquid Glass widgets follow the Translucency, Blur and Liquid strength sliders in Appearance. Weather data comes from Open-Meteo. Widgets sit on the desktop, behind your windows."
+                }
+            }
+        }
+
+        // ── Reminders ──
+        Component {
+            id: paneReminders
+            Column {
+                id: remPane
+                spacing: 10
+                readonly property var b: root.bar
+                readonly property var list: b ? b.reminders : []
+
+                SLabel { t: pal; header: true; text: "Reminder alerts" }
+                SCard {
+                    t: pal
+                    SRow {
+                        t: pal
+                        title: "Menu bar icon"
+                        subtitle: "Show the checklist icon next to Notifications. Alt + R opens the same popover from anywhere."
+                        SSwitch {
+                            t: pal
+                            checked: remPane.b ? remPane.b.barWidgetEnabled("reminders") : true
+                            onToggled: v => { if (remPane.b) remPane.b.setBarWidget("reminders", v); }
+                        }
+                    }
+                    SRow {
+                        t: pal
+                        title: "Count badge"
+                        subtitle: "Orange dot while a reminder is due"
+                        SSwitch {
+                            t: pal
+                            checked: remPane.b ? remPane.b.remShowBadge : true
+                            onToggled: v => { if (remPane.b) remPane.b.remShowBadge = v; }
+                        }
+                    }
+                    SRow {
+                        t: pal
+                        title: "Open reminders"
+                        subtitle: remPane.b && remPane.b.remPending > 0
+                                  ? (remPane.b.remOverdue > 0 ? remPane.b.remOverdue + " due now" : remPane.b.remPending + " scheduled")
+                                  : "Nothing scheduled"
+                        SButton {
+                            t: pal
+                            text: "Open"
+                            onClicked: if (remPane.b) remPane.b.remAsk(true)
+                        }
+                    }
+                }
+
+                SLabel { t: pal; header: true; text: "Quick add" }
+                SCard {
+                    t: pal
+                    SRow {
+                        t: pal
+                        title: "New reminder"
+                        subtitle: "Adds it to the same list as Alt + R"
+                        Row {
+                            spacing: 8
+                            Rectangle {
+                                width: 190; height: 24; radius: 6
+                                color: pal.field
+                                border.width: paneAddTitle.activeFocus ? 1 : 0
+                                border.color: pal.accent
+                                TextInput {
+                                    id: paneAddTitle
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 7; anchors.rightMargin: 7
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    color: pal.text
+                                    font.family: pal.fam; font.pixelSize: 12
+                                    selectByMouse: true
+                                    clip: true
+                                    Keys.onPressed: function (e) {
+                                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                                            e.accepted = true;
+                                            remPane.paneAddSubmit();
+                                        }
+                                    }
+                                }
+                                Text {
+                                    visible: paneAddTitle.text === ""
+                                    x: 7; anchors.verticalCenter: parent.verticalCenter
+                                    text: "Reminder name"
+                                    color: pal.text3
+                                    font.family: pal.fam; font.pixelSize: 12
+                                }
+                            }
+                            Rectangle {
+                                width: 54; height: 24; radius: 6
+                                color: pal.field
+                                border.width: paneAddMins.activeFocus ? 1 : 0
+                                border.color: pal.accent
+                                TextInput {
+                                    id: paneAddMins
+                                    anchors.fill: parent
+                                    horizontalAlignment: TextInput.AlignHCenter
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    color: pal.text
+                                    font.family: pal.fam; font.pixelSize: 12
+                                    selectByMouse: true
+                                    inputMethodHints: Qt.ImhDigitsOnly
+                                    validator: IntValidator { bottom: 1; top: 99999 }
+                                    text: "10"
+                                    Keys.onPressed: function (e) {
+                                        if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) {
+                                            e.accepted = true;
+                                            remPane.paneAddSubmit();
+                                        }
+                                    }
+                                }
+                            }
+                            Text {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "min"
+                                color: pal.text2
+                                font.family: pal.fam; font.pixelSize: 12
+                            }
+                            SButton {
+                                t: pal
+                                text: "Add"
+                                onClicked: remPane.paneAddSubmit()
+                            }
+                        }
+                    }
+                }
+
+                SLabel { t: pal; header: true; text: "All reminders" }
+                SLabel {
+                    visible: remPane.list.length === 0
+                    t: pal
+                    text: "No reminders yet. Press Alt + R (or use the field above) to add one."
+                }
+                SCard {
+                    visible: remPane.list.length > 0
+                    t: pal
+                    Repeater {
+                        model: remPane.list
+                        delegate: Column {
+                            id: remR
+                            required property var modelData
+                            required property int index
+                            width: parent.width
+                            Rectangle { visible: remR.index > 0; width: parent.width; height: 1; color: pal.sep }
+                            SRow {
+                                t: pal
+                                title: remR.modelData.title
+                                subtitle: remR.modelData.done ? "Completed"
+                                          : (remPane.b ? remPane.b.remDueLabel(remR.modelData.due) + "  \u00B7  " + remPane.b.remRel(remR.modelData.due) : "")
+                                Row {
+                                    spacing: 8
+                                    SButton {
+                                        t: pal
+                                        text: remR.modelData.done ? "Restore" : "Done"
+                                        onClicked: if (remPane.b) remPane.b.remToggle(remR.modelData.id)
+                                    }
+                                    SButton {
+                                        t: pal
+                                        text: "Delete"
+                                        destructive: true
+                                        onClicked: if (remPane.b) remPane.b.remDelete(remR.modelData.id)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                SCard {
+                    visible: remPane.list.length > 0
+                    t: pal
+                    SRow {
+                        t: pal
+                        title: "Clear completed"
+                        subtitle: "Removes every reminder you have ticked off"
+                        SButton {
+                            t: pal
+                            destructive: true
+                            text: "Clear"
+                            onClicked: if (remPane.b) remPane.b.remClearCompleted()
+                        }
+                    }
+                }
+
+                function paneAddSubmit() {
+                    if (!remPane.b) return
+                    var title = paneAddTitle.text.trim()
+                    if (title === "") { paneAddTitle.forceActiveFocus(); return }
+                    var mins = parseInt(paneAddMins.text, 10)
+                    if (!isFinite(mins) || mins < 1) mins = 10
+                    remPane.b.remAdd(title, Date.now() + mins * 60000)
+                    paneAddTitle.text = ""
+                    paneAddMins.text = "10"
                 }
             }
         }

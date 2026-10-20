@@ -133,6 +133,9 @@ Scope {
     // Control Center: ids of the enabled controls, in order (edit with Control Center → Edit Controls)
     property var ccControls: ["wifi", "nowplaying", "bluetooth", "airplane", "focus", "record", "nightshift", "keepawake", "display", "sound"]
     property bool ccMigRec: false              // one-time: add the Screen Recording tile to an existing Control Center layout
+    property bool ccMigRem: false              // one-time: add the Reminders tile to an existing Control Center layout
+    property bool remMigBar: false             // one-time: add the Reminders item to an existing menu bar
+    property bool remShowBadge: true           // red dot on the menu-bar icon while a reminder is due
     property bool recording: false
     property int recSecs: 0
     property var otherConnections: []
@@ -149,9 +152,9 @@ Scope {
     readonly property var settingKeys: ["barEnabled", "darkMode", "accent", "fontFamily", "barHeight", "glassOpacity",
         "barStyle", "glassRim", "glassGrain", "glassLiquid", "glassBlur", "barBgOpacity", "glassRealtime", "glassDebug", "wallpaperPath", "use24h", "showDate",
         "showSeconds", "showBatteryPercent", "showTray", "showSearch", "webSearchEngine", "barLogoMode", "barCustomLogoPath", "barWidgets", "weekStartsMonday", "terminal", "launcher",
-        "filesCmd", "clipboardCmd", "appUsage", "clipHistory", "clipAutoPaste", "emojiRecent", "screenshotDir", "screenshotSave", "screenshotClipboard", "screenshotNotify", "nightTemp", "ccControls", "ccMigRec", "wallpaperDir", "wallpaperFavs", "wallpaperCmd"]
+        "filesCmd", "clipboardCmd", "appUsage", "clipHistory", "clipAutoPaste", "emojiRecent", "screenshotDir", "screenshotSave", "screenshotClipboard", "screenshotNotify", "nightTemp", "ccControls", "ccMigRec", "ccMigRem", "remMigBar", "remShowBadge", "wallpaperDir", "wallpaperFavs", "wallpaperCmd"]
     // Optional bar widgets; tray and Spotlight use their existing showTray/showSearch settings.
-    property var barWidgets: ["appleMenu", "appMenus", "volume", "keyboard", "notifications", "bluetooth", "privacy", "controlCenter", "clock"]
+    property var barWidgets: ["appleMenu", "appMenus", "volume", "keyboard", "reminders", "notifications", "bluetooth", "privacy", "controlCenter", "clock"]
     function barWidgetEnabled(id) { return barWidgets.indexOf(id) >= 0; }
     function resolvedBarLogoUrl() {
         var p = String(barCustomLogoPath || "").trim();
@@ -184,6 +187,7 @@ Scope {
         { id: "bluetooth",  label: "Bluetooth",     glyph: "bluetooth",  w: 1, h: 1 },
         { id: "airplane",   label: "Airplane Mode", glyph: "airplane",   w: 1, h: 1 },
         { id: "focus",      label: "Focus",         glyph: "moon",       w: 2, h: 1 },
+        { id: "reminders",  label: "Reminders",     glyph: "reminders",  w: 2, h: 1 },
         { id: "nightshift", label: "Night Shift",   glyph: "nightshift", w: 1, h: 1 },
         { id: "keepawake",  label: "Keep Awake",    glyph: "coffee",     w: 1, h: 1 },
         { id: "darkmode",   label: "Dark Mode",     glyph: "contrast",   w: 1, h: 1 },
@@ -192,7 +196,7 @@ Scope {
         { id: "display",    label: "Display",       glyph: "sun",        w: 4, h: 1 },
         { id: "sound",      label: "Sound",         glyph: "speaker",    w: 4, h: 1 }
     ]
-    readonly property var ccDefault: ["wifi", "nowplaying", "bluetooth", "airplane", "focus", "record", "nightshift", "keepawake", "display", "sound"]
+    readonly property var ccDefault: ["wifi", "nowplaying", "bluetooth", "airplane", "focus", "reminders", "record", "nightshift", "keepawake", "display", "sound"]
     function ccDef(id) {
         for (var i = 0; i < ccCatalog.length; i++) if (ccCatalog[i].id === id) return ccCatalog[i];
         return null;
@@ -547,6 +551,13 @@ Scope {
                 ctx.closePath(); ctx.stroke();
                 line(9, 2.2, 9, 3.9);
                 ctx.beginPath(); ctx.arc(9, 14.3, 1.7, 0.25, PI - 0.25); ctx.stroke();
+            } else if (k === "reminders") {
+                // checklist: three bullets with lines
+                for (i2 = 0; i2 < 3; i2++) {
+                    var ry = 4.4 + i2 * 4.6;
+                    circ(3.8, ry, 1.05); ctx.fill();
+                    line(7.2, ry, i2 === 2 ? 11.4 : 14.4, ry);
+                }
             } else if (k === "close") {
                 line(5, 5, 13, 13); line(13, 5, 5, 13);
             } else if (k === "gear") {
@@ -557,6 +568,35 @@ Scope {
                 }
                 circ(9, 9, 5.6); ctx.stroke();
             }
+        }
+    }
+
+    // small pill button used by the Reminders popover (In / At, units, AM / PM, snooze)
+    component RemPill: Rectangle {
+        id: rp
+        required property var t
+        property string label: ""
+        property bool active: false
+        signal clicked()
+        width: rpText.implicitWidth + 22
+        height: 26
+        radius: 13
+        color: rp.active ? rp.t.accent : (rpMa.containsMouse ? rp.t.btnHover : rp.t.btnOff)
+        Behavior on color { ColorAnimation { duration: 120 } }
+        Text {
+            id: rpText
+            anchors.centerIn: parent
+            text: rp.label
+            color: rp.active ? "white" : rp.t.fg
+            font.family: rp.t.fam
+            font.pixelSize: 12
+            font.weight: rp.active ? Font.DemiBold : Font.Normal
+        }
+        MouseArea {
+            id: rpMa
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: rp.clicked()
         }
     }
 
@@ -2715,8 +2755,9 @@ Scope {
         barStyle = "liquid"; use24h = false; showDate = true; showSeconds = false; showBatteryPercent = true;
         showTray = true; showSearch = true;
         barLogoMode = "apple"; barCustomLogoPath = "";
-        barWidgets = ["appleMenu", "appMenus", "volume", "keyboard", "notifications", "wifi", "bluetooth", "privacy", "controlCenter", "clock"];
+        barWidgets = ["appleMenu", "appMenus", "volume", "keyboard", "reminders", "notifications", "wifi", "bluetooth", "privacy", "controlCenter", "clock"];
         ccControls = ccDefault.slice();
+        remShowBadge = true;
     }
 
     // inherit look from macdock first, then macbar's own file wins
@@ -2740,12 +2781,26 @@ Scope {
         printErrors: false
         onLoaded: {
             try { root.applySettings(JSON.parse(text()), root.settingKeys); } catch (err) { }
+            var migrated = false;
             if (!root.ccMigRec) {
                 root.ccMigRec = true;
                 var cl = root.ccControls.slice();
                 if (cl.indexOf("record") < 0) { var fi = cl.indexOf("focus"); cl.splice(fi >= 0 ? fi + 1 : cl.length, 0, "record"); root.ccControls = cl; }
+                migrated = true;
+            }
+            // Reminders arrived after the first layouts were saved: surface them once, without overriding a later removal.
+            if (!root.ccMigRem) {
+                root.ccMigRem = true;
+                if (root.ccControls.indexOf("reminders") < 0) root.ccControls = root.ccControls.concat(["reminders"]);
+                migrated = true;
+            }
+            if (!root.remMigBar) {
+                root.remMigBar = true;
+                if (root.barWidgets.indexOf("reminders") < 0) root.barWidgets = root.barWidgets.concat(["reminders"]);
+                migrated = true;
             }
             root.settingsReady = true;
+            if (migrated) saveTimer.restart();      // persist the new widget/tile once, even if nothing else changes
             if (root.barStyle === "liquid") root.startGlass();
         }
         onLoadFailed: { root.ccMigRec = true; root.settingsReady = true; if (root.barStyle === "liquid") root.startGlass(); }
@@ -2901,6 +2956,274 @@ Scope {
             } catch (e) {}
         }
         notifToastRemove(id);
+    }
+
+    // ═════════════ REMINDERS (ALT + R) ═════════════
+    //   hl.bind("ALT + R", hl.dsp.exec_cmd("qs ipc call reminders toggle"))
+    //
+    // One-shot reminders live in ~/.config/macbar/reminders.json (kept apart from settings.json, so resetting the
+    // look never deletes them). The menu bar icon, Control Center tile, Settings → Reminders pane and the
+    // top-right popover all read the same list.
+    property var reminders: []                 // [{ id, title, due, done, notified, created }], soonest first
+    property int remRevision: 0                // bumped on every change (Settings/CC bindings re-read the list)
+    property int remRequest: 0                 // IPC → the per-screen UI opens/closes the popover
+    property bool remWantShow: true
+    property bool remOpen: false
+    property bool remLoaded: false
+    property real remNow: Date.now()
+    property var remAlerts: []                 // reminders that just came due: [{ id, title, due }]
+    property string remDraftTitle: ""
+    property string remMode: "in"              // "in" = after a duration, "at" = at a clock time
+    property string remAmount: "10"
+    property string remUnit: "min"             // sec | min | hour
+    property string remHour: "9"
+    property string remMinute: "00"
+    property string remSecond: ""
+    property bool remPM: false
+    property string remError: ""
+
+    readonly property int remPending: {
+        var n = 0;
+        for (var i = 0; i < reminders.length; i++) if (!reminders[i].done) n++;
+        return n;
+    }
+    readonly property int remOverdue: {
+        var n = 0, now = remNow;                  // remNow dependency: the badge updates while the clock ticks
+        for (var i = 0; i < reminders.length; i++) if (!reminders[i].done && reminders[i].due <= now) n++;
+        return n;
+    }
+    readonly property int remDoneCount: reminders.length - remPending
+    readonly property var remNext: {
+        for (var i = 0; i < reminders.length; i++) if (!reminders[i].done) return reminders[i];
+        return null;
+    }
+
+    function remPad(n) { return (n < 10 ? "0" : "") + n; }
+    function remNewId() { return Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36); }
+    function remCopy(r) {
+        return { id: r.id, title: r.title, due: r.due, done: r.done, notified: r.notified, created: r.created };
+    }
+    function remSorted(a) {
+        a.sort(function (x, y) {
+            if (x.done !== y.done) return x.done ? 1 : -1;
+            return x.due - y.due;
+        });
+        return a;
+    }
+    function remFmt(t) {
+        var d = new Date(t), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds(), out;
+        if (root.use24h) out = root.remPad(h) + ":" + root.remPad(m);
+        else {
+            var hh = h % 12;
+            if (hh === 0) hh = 12;
+            out = hh + ":" + root.remPad(m);
+        }
+        if (s !== 0) out += ":" + root.remPad(s);
+        if (!root.use24h) out += (h < 12 ? " AM" : " PM");
+        return out;
+    }
+    function remRel(t) {
+        var diff = Math.round((t - root.remNow) / 1000), future = diff >= 0;
+        diff = Math.abs(diff);
+        var s;
+        if (diff < 60) s = diff + "s";
+        else if (diff < 3600) s = Math.round(diff / 60) + " min";
+        else if (diff < 86400) {
+            var h = Math.floor(diff / 3600), m = Math.round((diff % 3600) / 60);
+            s = h + "h" + (m > 0 ? " " + m + "m" : "");
+        } else s = Math.floor(diff / 86400) + "d";
+        return future ? "in " + s : s + " ago";
+    }
+    function remDueLabel(t) {
+        var now = new Date(root.remNow), d = new Date(t);
+        if (d.toDateString() === now.toDateString()) return root.remFmt(t);
+        var tm = new Date(now.getTime() + 86400000);
+        if (d.toDateString() === tm.toDateString()) return "Tomorrow \u00B7 " + root.remFmt(t);
+        return Qt.formatDateTime(d, "d MMM") + " \u00B7 " + root.remFmt(t);
+    }
+    function remSave() {
+        if (!root.remLoaded) return;
+        var out = [];
+        for (var i = 0; i < root.reminders.length; i++) out.push(root.remCopy(root.reminders[i]));
+        remStore.setText(JSON.stringify(out, null, 2));
+    }
+    function remCommit(a) {
+        root.reminders = root.remSorted(a);
+        root.remRevision++;
+        root.remSave();
+    }
+    function remLoad(txt) {
+        var a = [];
+        try {
+            var o = JSON.parse(txt);
+            if (Array.isArray(o)) {
+                for (var i = 0; i < o.length; i++) {
+                    var r = o[i], due = Number(r && r.due);
+                    if (!r || typeof r.title !== "string" || !isFinite(due)) continue;
+                    a.push({
+                        id: typeof r.id === "string" && r.id !== "" ? r.id : root.remNewId(),
+                        title: r.title,
+                        due: due,
+                        done: r.done === true,
+                        notified: r.notified === true,
+                        created: Number(r.created) || Date.now()
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn("reminders: could not read saved state:", e);
+        }
+        root.reminders = root.remSorted(a);
+        root.remLoaded = true;
+        root.remRevision++;
+        root.remNow = Date.now();
+        Qt.callLater(root.remCheck);
+    }
+    function remAdd(title, due) {
+        title = String(title).trim();
+        if (title === "" || !isFinite(due)) return "";
+        var a = root.reminders.slice();
+        var r = { id: root.remNewId(), title: title, due: due, done: false, notified: false, created: Date.now() };
+        a.push(r);
+        root.remCommit(a);
+        return r.id;
+    }
+    function remDelete(id) {
+        var a = root.reminders.filter(function (r) { return r.id !== id; });
+        root.remAlerts = root.remAlerts.filter(function (r) { return r.id !== id; });
+        root.remCommit(a);
+    }
+    function remDone(id) {
+        var a = root.reminders.slice();
+        for (var i = 0; i < a.length; i++) if (a[i].id === id) {
+            var o = root.remCopy(a[i]);
+            o.done = true;
+            o.notified = true;
+            a[i] = o;
+        }
+        root.remAlerts = root.remAlerts.filter(function (r) { return r.id !== id; });
+        root.remCommit(a);
+    }
+    function remToggle(id) {
+        var a = root.reminders.slice(), now = Date.now();
+        for (var i = 0; i < a.length; i++) if (a[i].id === id) {
+            var o = root.remCopy(a[i]);
+            o.done = !o.done;
+            o.notified = o.done ? true : (o.due <= now);
+            a[i] = o;
+        }
+        root.remAlerts = root.remAlerts.filter(function (r) {
+            for (var j = 0; j < a.length; j++) if (a[j].id === r.id) return !a[j].done;
+            return true;
+        });
+        root.remCommit(a);
+    }
+    function remSnooze(id, minutes) {
+        var a = root.reminders.slice(), due = Date.now() + Math.max(1, minutes) * 60000;
+        for (var i = 0; i < a.length; i++) if (a[i].id === id) {
+            var o = root.remCopy(a[i]);
+            o.due = due;
+            o.done = false;
+            o.notified = false;
+            a[i] = o;
+        }
+        root.remAlerts = root.remAlerts.filter(function (r) { return r.id !== id; });
+        root.remCommit(a);
+    }
+    function remClearCompleted() {
+        root.remCommit(root.reminders.filter(function (r) { return !r.done; }));
+    }
+    function remCheck() {
+        var now = Date.now();
+        root.remNow = now;
+        var a = root.reminders.slice(), changed = false, hits = [];
+        for (var i = 0; i < a.length; i++) {
+            if (a[i].done || a[i].notified || a[i].due > now) continue;
+            var o = root.remCopy(a[i]);
+            o.notified = true;
+            a[i] = o;
+            hits.push({ id: o.id, title: o.title, due: o.due });
+            changed = true;
+        }
+        if (changed) root.remCommit(a);
+        if (hits.length > 0) root.remAlerts = root.remAlerts.concat(hits);
+    }
+    function remResetDraft() {
+        root.remDraftTitle = "";
+        root.remError = "";
+        root.remAmount = "10";
+        root.remUnit = "min";
+        var d = new Date(Date.now() + 3600000);
+        d.setSeconds(0, 0);
+        root.remHour = root.use24h ? root.remPad(d.getHours()) : String((d.getHours() % 12) || 12);
+        root.remMinute = root.remPad(d.getMinutes());
+        root.remSecond = "";
+        root.remPM = d.getHours() >= 12;
+    }
+    function remBuildDue() {
+        root.remError = "";
+        if (root.remDraftTitle.trim() === "") { root.remError = "Give the reminder a name."; return -1; }
+        if (root.remMode === "in") {
+            var n = Number(root.remAmount);
+            if (!isFinite(n) || n <= 0) { root.remError = "Enter a duration greater than zero."; return -1; }
+            var mul = root.remUnit === "sec" ? 1 : (root.remUnit === "hour" ? 3600 : 60);
+            return Date.now() + Math.round(n * mul * 1000);
+        }
+        var h = parseInt(root.remHour, 10), m = parseInt(root.remMinute, 10);
+        var s = root.remSecond.trim() === "" ? 0 : parseInt(root.remSecond, 10);
+        if (!isFinite(h) || !isFinite(m) || !isFinite(s)) { root.remError = "Enter a valid time."; return -1; }
+        if (root.use24h) {
+            if (h < 0 || h > 23) { root.remError = "Hour must be between 0 and 23."; return -1; }
+        } else {
+            if (h < 1 || h > 12) { root.remError = "Hour must be between 1 and 12."; return -1; }
+            h = (h % 12) + (root.remPM ? 12 : 0);
+        }
+        if (m < 0 || m > 59 || s < 0 || s > 59) { root.remError = "Minutes and seconds must be between 0 and 59."; return -1; }
+        var d = new Date();
+        d.setHours(h, m, s, 0);
+        if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);   // a time that already passed means tomorrow
+        return d.getTime();
+    }
+    function remSubmit() {
+        var due = root.remBuildDue();
+        if (due < 0) return false;
+        root.remAdd(root.remDraftTitle, due);
+        root.remResetDraft();
+        return true;
+    }
+    function remAsk(show) {
+        root.remWantShow = show;
+        root.remRequest++;
+    }
+
+    FileView {
+        id: remStore
+        path: root.configDir + "/reminders.json"
+        printErrors: false
+        onLoaded: root.remLoad(text())
+        onLoadFailed: {
+            root.reminders = [];
+            root.remAlerts = [];
+            root.remRevision++;
+            root.remLoaded = true;
+            root.remCheck();
+        }
+    }
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.remLoaded
+        onTriggered: root.remCheck()
+    }
+    IpcHandler {
+        target: "reminders"
+        function toggle(): void { root.remAsk(!root.remOpen); }
+        function open(): void { root.remAsk(true); }
+        function close(): void { root.remAsk(false); }
+        function add(title: string, minutes: int): void {
+            if (String(title).trim() === "") return;
+            root.remAdd(String(title), Date.now() + Math.max(1, minutes) * 60000);
+        }
     }
 
     // ═════════════ WALLPAPER PICKER (CTRL + ALT + W) ═════════════
@@ -3192,7 +3515,11 @@ Scope {
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: (ui.pop !== "" && ui.pop !== "spot") ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-            mask: Region { item: maskItem; Region { item: toastMask } }
+            mask: Region {
+                item: maskItem
+                Region { item: toastMask }
+                Region { item: remToastMask }
+            }
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
@@ -3342,7 +3669,7 @@ Scope {
                 }
                 // bounding box of all glass that is on screen right now (popovers, notification popups) + a refraction margin
                 readonly property rect glassRect: {
-                    var items = [menuPop, cc, cal, wifiPop, btPop, trayPop, notifPop, toastArea, volPop, kbPop, levelOsd], x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, any = false;
+                    var items = [menuPop, cc, cal, wifiPop, btPop, trayPop, notifPop, toastArea, remPop, remToastArea, volPop, kbPop, levelOsd], x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9, any = false;
                     for (var i = 0; i < items.length; i++) {
                         var it = items[i];
                         if (!it.visible) continue;
@@ -3352,7 +3679,7 @@ Scope {
                     return any ? Qt.rect(x0 - 64, y0 - 64, x1 - x0 + 128, y1 - y0 + 128) : Qt.rect(0, 0, 0, 0);
                 }
                 readonly property bool isMenu: ["apple", "app", "file", "edit", "view", "window", "help"].indexOf(pop) >= 0
-                readonly property bool anyVisible: menuPop.visible || cc.visible || cal.visible || wifiPop.visible || trayPop.visible || notifPop.visible || toastArea.visible || volPop.visible || kbPop.visible
+                readonly property bool anyVisible: menuPop.visible || cc.visible || cal.visible || wifiPop.visible || trayPop.visible || notifPop.visible || toastArea.visible || remPop.visible || remToastArea.visible || volPop.visible || kbPop.visible
                 onAnyVisibleChanged: root.popCount += (anyVisible ? 1 : -1)
                 onPopChanged: {
                     armed = "";
@@ -3361,6 +3688,8 @@ Scope {
                     if (pop !== "cc") ccEdit = false;
                     root.notifOpen = (pop === "notif");
                     if (root.notifOpen) root.notifUnread = 0;
+                    root.remOpen = (pop === "rem");
+                    if (pop === "rem") root.remResetDraft();
                     if (pop === "wifi") { root.wifiError = ""; root.scanWifi(); root.refreshConnections(); }
                     if (pop === "spot") {
                         spMode = "home"; spQuery = ""; spSel = 0; spExpanded = ({}); clipMenu = false;
@@ -3382,6 +3711,12 @@ Scope {
                             ui.openPop("spot", 0);
                             if (want !== "home") ui.spSetMode(want);
                         }
+                    }
+                    function onRemRequestChanged() {
+                        var fm = Hyprland.focusedMonitor;
+                        if (!(!fm || fm.name === win.modelData.name || Quickshell.screens.length === 1)) return;
+                        if (!root.remWantShow) { if (ui.pop === "rem") ui.pop = ""; return; }
+                        if (ui.pop !== "rem") ui.openPop("rem", 0);
                     }
                 }
 
@@ -3874,6 +4209,25 @@ Scope {
                                 }
                             }
                             MouseArea { anchors.fill: parent; onClicked: ui.openPop("cc", 0) }
+                        }
+                        // reminders (click, or ALT + R from anywhere)
+                        Item {
+                            id: remBtn
+                            visible: root.barWidgetEnabled("reminders")
+                            width: root.barWidgetEnabled("reminders") ? 28 : 0; height: 28
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width - 2; height: parent.height - 6; radius: 6
+                                color: ui.pop === "rem" ? pal.hover : "transparent"
+                            }
+                            Glyph { anchors.centerIn: parent; width: 16; height: 16; kind: "reminders"; color: pal.fg }
+                            Rectangle {
+                                visible: root.remShowBadge && root.remOverdue > 0
+                                x: parent.width / 2 + 2; y: parent.height / 2 - 8
+                                width: 7; height: 7; radius: 3.5
+                                color: "#FF9F0A"
+                            }
+                            MouseArea { anchors.fill: parent; onClicked: ui.openPop("rem", 0) }
                         }
                         // notification system (bell)
                         Item {
@@ -4405,6 +4759,600 @@ Scope {
                                         showTime: true
                                         showClose: hhov.hovered
                                         onCloseClicked: root.notifDelete(hc.nid)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ═════════ reminders (ALT + R) ═════════
+                Item {
+                    id: remPop
+                    z: 10
+                    width: 380
+                    height: Math.min(remCol.height + 28, ui.height - root.barHeight - 20)
+                    x: Math.max(6, ui.width - width - 8)
+                    y: root.barHeight + 6
+                    opacity: ui.pop === "rem" ? 1 : 0
+                    visible: opacity > 0
+                    scale: root.barPopupScale * (ui.pop === "rem" ? 1 : 0.96)
+                    transformOrigin: Item.TopRight
+                    Behavior on opacity { NumberAnimation { duration: 110 } }
+                    Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+
+                    LGlass {
+                        anchors.fill: parent
+                        backdrop: glassBackdrop.item
+                        shaderUrl: root.glassShaderUrl
+                        liquid: root.liquidActive
+                        dark: root.darkMode
+                        bx: remPop.x; by: remPop.y
+                        cornerR: 26
+                        tint: root.glassOpacity
+                        thickness: 26
+                        strength: 0.8 * root.glassLiquid
+                        rim: root.glassRim
+                        grain: root.glassGrain
+                        blur: root.glassBlur
+                        debug: root.glassDebug
+                        onShaderError: root.glassState = "failed"
+                    }
+                    MouseArea { anchors.fill: parent }      // clicks inside the panel don't close it
+
+                    Timer {
+                        id: remFocusTimer
+                        interval: 60
+                        onTriggered: if (ui.pop === "rem") remTitle.forceActiveFocus()
+                    }
+                    Connections {
+                        target: ui
+                        function onPopChanged() {
+                            if (ui.pop === "rem") { remFlick.contentY = 0; remFocusTimer.restart(); }
+                        }
+                    }
+
+                    Flickable {
+                        id: remFlick
+                        x: 0; y: 14
+                        width: parent.width
+                        height: parent.height - 28
+                        contentWidth: width
+                        contentHeight: remCol.height
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        interactive: contentHeight > height
+
+                        Column {
+                            id: remCol
+                            x: 16
+                            width: remFlick.width - 32
+                            spacing: 10
+
+                            // ── header ──
+                            Item {
+                                width: parent.width; height: 24
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Reminders"
+                                    color: pal.fg
+                                    font.family: pal.fam; font.pixelSize: 17; font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: root.remPending === 0 ? "All caught up"
+                                          : (root.remOverdue > 0 ? root.remOverdue + " due" : root.remPending + " upcoming")
+                                    color: root.remOverdue > 0 ? "#FF9F0A" : pal.fg2
+                                    font.family: pal.fam; font.pixelSize: 12
+                                }
+                            }
+
+                            // ── add form ──
+                            Rectangle {
+                                width: parent.width
+                                height: formCol.height + 24
+                                radius: 18
+                                color: pal.tile
+                                border.width: 1; border.color: pal.tileBorder
+
+                                Column {
+                                    id: formCol
+                                    x: 12; y: 12
+                                    width: parent.width - 24
+                                    spacing: 8
+
+                                    // name
+                                    Rectangle {
+                                        width: parent.width; height: 34; radius: 9
+                                        color: pal.dark ? Qt.rgba(0, 0, 0, 0.26) : Qt.rgba(255, 255, 255, 0.5)
+                                        border.width: remTitle.activeFocus ? 1 : 0
+                                        border.color: root.accent
+                                        TextInput {
+                                            id: remTitle
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10; anchors.rightMargin: 10
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: pal.fg
+                                            selectionColor: root.accent
+                                            selectedTextColor: "white"
+                                            font.family: pal.fam; font.pixelSize: 13
+                                            selectByMouse: true
+                                            clip: true
+                                            text: root.remDraftTitle
+                                            onTextChanged: if (root.remDraftTitle !== text) root.remDraftTitle = text
+                                            Connections {
+                                                target: root
+                                                function onRemDraftTitleChanged() {
+                                                    if (remTitle.text !== root.remDraftTitle) remTitle.text = root.remDraftTitle;
+                                                }
+                                            }
+                                            Keys.onPressed: function (e) {
+                                                if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { e.accepted = true; root.remSubmit(); }
+                                                else if (e.key === Qt.Key_Escape) { e.accepted = true; ui.pop = ""; }
+                                            }
+                                        }
+                                        Text {
+                                            visible: remTitle.text === ""
+                                            x: 10
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: "Reminder name"
+                                            color: pal.fg3
+                                            font.family: pal.fam; font.pixelSize: 13
+                                        }
+                                    }
+
+                                    // In / At
+                                    Row {
+                                        spacing: 6
+                                        RemPill { t: pal; label: "In"; active: root.remMode === "in"; onClicked: root.remMode = "in" }
+                                        RemPill { t: pal; label: "At"; active: root.remMode === "at"; onClicked: root.remMode = "at" }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: root.remMode === "in" ? "from now" : "a clock time"
+                                            color: pal.fg3
+                                            font.family: pal.fam; font.pixelSize: 11
+                                        }
+                                    }
+
+                                    // duration
+                                    Row {
+                                        visible: root.remMode === "in"
+                                        spacing: 6
+                                        Rectangle {
+                                            width: 64; height: 32; radius: 9
+                                            color: pal.dark ? Qt.rgba(0, 0, 0, 0.26) : Qt.rgba(255, 255, 255, 0.5)
+                                            border.width: remAmount.activeFocus ? 1 : 0
+                                            border.color: root.accent
+                                            TextInput {
+                                                id: remAmount
+                                                anchors.fill: parent
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                color: pal.fg
+                                                selectionColor: root.accent
+                                                selectedTextColor: "white"
+                                                font.family: pal.fam; font.pixelSize: 13
+                                                selectByMouse: true
+                                                inputMethodHints: Qt.ImhFormattedNumbersOnly
+                                                validator: DoubleValidator { bottom: 0; top: 99999; decimals: 2 }
+                                                text: root.remAmount
+                                                onTextChanged: if (root.remAmount !== text) root.remAmount = text
+                                                Connections {
+                                                    target: root
+                                                    function onRemAmountChanged() {
+                                                        if (remAmount.text !== root.remAmount) remAmount.text = root.remAmount;
+                                                    }
+                                                }
+                                                Keys.onPressed: function (e) {
+                                                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { e.accepted = true; root.remSubmit(); }
+                                                    else if (e.key === Qt.Key_Escape) { e.accepted = true; ui.pop = ""; }
+                                                }
+                                            }
+                                        }
+                                        RemPill { t: pal; label: "sec"; active: root.remUnit === "sec"; onClicked: root.remUnit = "sec" }
+                                        RemPill { t: pal; label: "min"; active: root.remUnit === "min"; onClicked: root.remUnit = "min" }
+                                        RemPill { t: pal; label: "hour"; active: root.remUnit === "hour"; onClicked: root.remUnit = "hour" }
+                                    }
+
+                                    // clock time
+                                    Row {
+                                        visible: root.remMode === "at"
+                                        spacing: 4
+                                        Rectangle {
+                                            width: 42; height: 32; radius: 9
+                                            color: pal.dark ? Qt.rgba(0, 0, 0, 0.26) : Qt.rgba(255, 255, 255, 0.5)
+                                            border.width: remHour.activeFocus ? 1 : 0
+                                            border.color: root.accent
+                                            TextInput {
+                                                id: remHour
+                                                anchors.fill: parent
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                color: pal.fg
+                                                font.family: pal.fam; font.pixelSize: 13
+                                                selectByMouse: true
+                                                inputMethodHints: Qt.ImhDigitsOnly
+                                                validator: IntValidator { bottom: 0; top: 23 }
+                                                text: root.remHour
+                                                onTextChanged: if (root.remHour !== text) root.remHour = text
+                                                Keys.onPressed: function (e) {
+                                                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { e.accepted = true; root.remSubmit(); }
+                                                    else if (e.key === Qt.Key_Escape) { e.accepted = true; ui.pop = ""; }
+                                                }
+                                                Connections {
+                                                    target: root
+                                                    function onRemHourChanged() {
+                                                        if (remHour.text !== root.remHour) remHour.text = root.remHour;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: ":"
+                                            color: pal.fg2
+                                            font.family: pal.fam; font.pixelSize: 14; font.weight: Font.DemiBold
+                                        }
+                                        Rectangle {
+                                            width: 42; height: 32; radius: 9
+                                            color: pal.dark ? Qt.rgba(0, 0, 0, 0.26) : Qt.rgba(255, 255, 255, 0.5)
+                                            border.width: remMinute.activeFocus ? 1 : 0
+                                            border.color: root.accent
+                                            TextInput {
+                                                id: remMinute
+                                                anchors.fill: parent
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                color: pal.fg
+                                                font.family: pal.fam; font.pixelSize: 13
+                                                selectByMouse: true
+                                                inputMethodHints: Qt.ImhDigitsOnly
+                                                validator: IntValidator { bottom: 0; top: 59 }
+                                                text: root.remMinute
+                                                onTextChanged: if (root.remMinute !== text) root.remMinute = text
+                                                Keys.onPressed: function (e) {
+                                                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { e.accepted = true; root.remSubmit(); }
+                                                    else if (e.key === Qt.Key_Escape) { e.accepted = true; ui.pop = ""; }
+                                                }
+                                                Connections {
+                                                    target: root
+                                                    function onRemMinuteChanged() {
+                                                        if (remMinute.text !== root.remMinute) remMinute.text = root.remMinute;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: ":"
+                                            color: pal.fg2
+                                            font.family: pal.fam; font.pixelSize: 14; font.weight: Font.DemiBold
+                                        }
+                                        Rectangle {
+                                            width: 42; height: 32; radius: 9
+                                            color: pal.dark ? Qt.rgba(0, 0, 0, 0.26) : Qt.rgba(255, 255, 255, 0.5)
+                                            border.width: remSecond.activeFocus ? 1 : 0
+                                            border.color: root.accent
+                                            TextInput {
+                                                id: remSecond
+                                                anchors.fill: parent
+                                                horizontalAlignment: TextInput.AlignHCenter
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                color: pal.fg
+                                                font.family: pal.fam; font.pixelSize: 13
+                                                selectByMouse: true
+                                                inputMethodHints: Qt.ImhDigitsOnly
+                                                validator: IntValidator { bottom: 0; top: 59 }
+                                                text: root.remSecond
+                                                onTextChanged: if (root.remSecond !== text) root.remSecond = text
+                                                Keys.onPressed: function (e) {
+                                                    if (e.key === Qt.Key_Return || e.key === Qt.Key_Enter) { e.accepted = true; root.remSubmit(); }
+                                                    else if (e.key === Qt.Key_Escape) { e.accepted = true; ui.pop = ""; }
+                                                }
+                                                Connections {
+                                                    target: root
+                                                    function onRemSecondChanged() {
+                                                        if (remSecond.text !== root.remSecond) remSecond.text = root.remSecond;
+                                                    }
+                                                }
+                                            }
+                                            Text {
+                                                visible: remSecond.text === ""
+                                                anchors.centerIn: parent
+                                                text: "ss"
+                                                color: pal.fg3
+                                                font.family: pal.fam; font.pixelSize: 12
+                                            }
+                                        }
+                                        Item { width: 2; height: 1 }
+                                        RemPill {
+                                            visible: !root.use24h
+                                            t: pal; label: "AM"; active: !root.remPM
+                                            onClicked: root.remPM = false
+                                        }
+                                        RemPill {
+                                            visible: !root.use24h
+                                            t: pal; label: "PM"; active: root.remPM
+                                            onClicked: root.remPM = true
+                                        }
+                                    }
+
+                                    // quick presets
+                                    Row {
+                                        visible: root.remMode === "in"
+                                        spacing: 6
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: "Quick"
+                                            color: pal.fg3
+                                            font.family: pal.fam; font.pixelSize: 11
+                                        }
+                                        RemPill {
+                                            t: pal; label: "5 min"
+                                            onClicked: { root.remAmount = "5"; root.remUnit = "min"; }
+                                        }
+                                        RemPill {
+                                            t: pal; label: "15 min"
+                                            onClicked: { root.remAmount = "15"; root.remUnit = "min"; }
+                                        }
+                                        RemPill {
+                                            t: pal; label: "30 min"
+                                            onClicked: { root.remAmount = "30"; root.remUnit = "min"; }
+                                        }
+                                        RemPill {
+                                            t: pal; label: "1 hour"
+                                            onClicked: { root.remAmount = "1"; root.remUnit = "hour"; }
+                                        }
+                                    }
+
+                                    Text {
+                                        visible: root.remError !== ""
+                                        width: parent.width
+                                        text: root.remError
+                                        color: "#FF453A"
+                                        wrapMode: Text.WordWrap
+                                        font.family: pal.fam; font.pixelSize: 11
+                                    }
+
+                                    Item {
+                                        width: parent.width; height: 30
+                                        Text {
+                                            anchors.left: parent.left
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: "Return to add"
+                                            color: pal.fg3
+                                            font.family: pal.fam; font.pixelSize: 11
+                                        }
+                                        Rectangle {
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: addLbl.implicitWidth + 26; height: 30; radius: 15
+                                            color: root.accent
+                                            opacity: remAddMa.pressed ? 0.82 : 1
+                                            Behavior on opacity { NumberAnimation { duration: 90 } }
+                                            Text {
+                                                id: addLbl
+                                                anchors.centerIn: parent
+                                                text: "Add Reminder"
+                                                color: "white"
+                                                font.family: pal.fam; font.pixelSize: 12; font.weight: Font.DemiBold
+                                            }
+                                            MouseArea { id: remAddMa; anchors.fill: parent; onClicked: root.remSubmit() }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── list ──
+                            Item {
+                                width: parent.width; height: 20
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "All Reminders"
+                                    color: pal.fg2
+                                    font.family: pal.fam; font.pixelSize: 12; font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    visible: root.remDoneCount > 0
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Clear completed"
+                                    color: clearMa.containsMouse ? pal.fg : pal.fg2
+                                    font.family: pal.fam; font.pixelSize: 11
+                                    MouseArea { id: clearMa; anchors.fill: parent; hoverEnabled: true; onClicked: root.remClearCompleted() }
+                                }
+                            }
+
+                            Text {
+                                visible: root.reminders.length === 0
+                                width: parent.width; height: 58
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                text: "No reminders yet"
+                                color: pal.fg2
+                                font.family: pal.fam; font.pixelSize: 13
+                            }
+
+                            Rectangle {
+                                visible: root.reminders.length > 0
+                                width: parent.width
+                                height: remListCol.height + 8
+                                radius: 18
+                                color: pal.tile
+                                border.width: 1; border.color: pal.tileBorder
+
+                                Column {
+                                    id: remListCol
+                                    x: 6; y: 4
+                                    width: parent.width - 12
+
+                                    Repeater {
+                                        model: root.reminders
+                                        delegate: Item {
+                                            id: remRow
+                                            required property var modelData
+                                            required property int index
+                                            readonly property bool overdue: !modelData.done && modelData.due <= root.remNow
+                                            width: remListCol.width; height: 50
+
+                                            Rectangle {
+                                                visible: remRow.index > 0
+                                                x: 12; width: parent.width - 24; height: 1
+                                                color: pal.sep
+                                            }
+                                            HoverHandler { id: remHover }
+
+                                            Rectangle {
+                                                id: remCheck
+                                                x: 8
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 22; height: 22; radius: 11
+                                                color: remRow.modelData.done ? root.accent : "transparent"
+                                                border.width: 1
+                                                border.color: remRow.modelData.done ? root.accent : pal.fg3
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    visible: remRow.modelData.done
+                                                    text: "\u2713"
+                                                    color: "white"
+                                                    font.pixelSize: 12; font.bold: true
+                                                }
+                                                MouseArea { anchors.fill: parent; onClicked: root.remToggle(remRow.modelData.id) }
+                                            }
+                                            Column {
+                                                anchors.left: remCheck.right
+                                                anchors.leftMargin: 10
+                                                anchors.right: remDel.left
+                                                anchors.rightMargin: 6
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                spacing: 1
+                                                Text {
+                                                    width: parent.width
+                                                    elide: Text.ElideRight
+                                                    text: remRow.modelData.title
+                                                    color: remRow.modelData.done ? pal.fg3 : pal.fg
+                                                    font.family: pal.fam; font.pixelSize: 13
+                                                    font.strikeout: remRow.modelData.done
+                                                }
+                                                Text {
+                                                    width: parent.width
+                                                    elide: Text.ElideRight
+                                                    text: root.remDueLabel(remRow.modelData.due) + "  \u00B7  " + root.remRel(remRow.modelData.due)
+                                                    color: remRow.overdue ? "#FF9F0A" : pal.fg2
+                                                    font.family: pal.fam; font.pixelSize: 11
+                                                }
+                                            }
+                                            Item {
+                                                id: remDel
+                                                width: 22; height: 22
+                                                anchors.right: parent.right
+                                                anchors.rightMargin: 8
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                opacity: remHover.hovered ? 1 : 0
+                                                Behavior on opacity { NumberAnimation { duration: 120 } }
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "\u2715"
+                                                    color: remDelMa.containsMouse ? "#FF453A" : pal.fg2
+                                                    font.pixelSize: 12
+                                                }
+                                                MouseArea { id: remDelMa; anchors.fill: parent; hoverEnabled: true; onClicked: root.remDelete(remRow.modelData.id) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ═════════ due-reminder alerts (top right, under the notifications) ═════════
+                Item {
+                    id: remToastMask
+                    x: remToastArea.x; y: remToastArea.y
+                    width: remToastArea.visible ? remToastArea.width : 0
+                    height: remToastArea.visible ? remToastArea.height : 0
+                }
+                Item {
+                    id: remToastArea
+                    z: 13
+                    width: 364
+                    x: ui.width - width - 10
+                    y: root.barHeight + 8 + (ui.toastsShown ? toastArea.height + 10 : 0)
+                    height: remToastCol.height
+                    visible: ui.toastScreen && root.remAlerts.length > 0 && ui.pop !== "rem"
+                    Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+                    Column {
+                        id: remToastCol
+                        width: parent.width
+                        spacing: 10
+                        Repeater {
+                            model: root.remAlerts
+                            delegate: Item {
+                                id: remAlert
+                                required property var modelData
+                                width: remToastCol.width
+                                height: remAlertBody.height + 28
+
+                                LGlass {
+                                    anchors.fill: parent
+                                    backdrop: glassBackdrop.item
+                                    shaderUrl: root.glassShaderUrl
+                                    liquid: root.liquidActive
+                                    dark: root.darkMode
+                                    bx: remToastArea.x + remAlert.x; by: remToastArea.y + remAlert.y
+                                    cornerR: 24
+                                    tint: root.glassOpacity
+                                    thickness: 22
+                                    strength: 0.75 * root.glassLiquid
+                                    rim: root.glassRim
+                                    grain: root.glassGrain
+                                    blur: root.notifBlur
+                                    debug: root.glassDebug
+                                    onShaderError: root.glassState = "failed"
+                                }
+
+                                Column {
+                                    id: remAlertBody
+                                    x: 16; y: 14
+                                    width: parent.width - 32
+                                    spacing: 6
+
+                                    Row {
+                                        spacing: 6
+                                        Glyph {
+                                            width: 14; height: 14
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            kind: "reminders"; color: "#FF9F0A"
+                                        }
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: "Reminder"
+                                            color: pal.fg2
+                                            font.family: pal.fam; font.pixelSize: 12; font.weight: Font.DemiBold
+                                        }
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        elide: Text.ElideRight
+                                        text: remAlert.modelData.title
+                                        color: pal.fg
+                                        font.family: pal.fam; font.pixelSize: 15; font.weight: Font.DemiBold
+                                    }
+                                    Text {
+                                        width: parent.width
+                                        text: "Due " + root.remFmt(remAlert.modelData.due) + "  \u00B7  " + root.remRel(remAlert.modelData.due)
+                                        color: "#FF9F0A"
+                                        font.family: pal.fam; font.pixelSize: 12
+                                    }
+                                    Row {
+                                        spacing: 6
+                                        RemPill { t: pal; label: "Snooze 10 min"; onClicked: root.remSnooze(remAlert.modelData.id, 10) }
+                                        RemPill { t: pal; label: "1 hour"; onClicked: root.remSnooze(remAlert.modelData.id, 60) }
+                                        RemPill { t: pal; label: "Done"; active: true; onClicked: root.remDone(remAlert.modelData.id) }
                                     }
                                 }
                             }
@@ -5342,6 +6290,7 @@ Scope {
                         case "bluetooth": return cBt;
                         case "airplane": return cAirplane;
                         case "focus": return cFocus;
+                        case "reminders": return cReminders;
                         case "nightshift": return cNight;
                         case "keepawake": return cAwake;
                         case "darkmode": return cDark;
@@ -5422,6 +6371,48 @@ Scope {
                                 spacing: 1
                                 Text { text: "Focus"; color: pal.fg; font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold }
                                 Text { text: root.dnd ? "Do Not Disturb" : "Off"; color: pal.fg2; font.family: pal.fam; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    Component {
+                        id: cReminders
+                        CCTile {
+                            t: pal; gx: ccg
+                            CCBtn {
+                                t: pal; gx: ccg
+                                x: 12; anchors.verticalCenter: parent.verticalCenter
+                                kind: "reminders"
+                                on: root.remOverdue > 0
+                                onTint: "#FF9F0A"
+                                onClicked: ui.openPop("rem", 0)
+                            }
+                            Column {
+                                x: 62; anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 62 - 24
+                                spacing: 1
+                                Text {
+                                    text: "Reminders"
+                                    color: pal.fg
+                                    font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: root.remPending === 0 ? "None scheduled"
+                                          : (root.remOverdue > 0 ? root.remOverdue + " due now"
+                                          : (root.remNext ? root.remRel(root.remNext.due) : ""))
+                                    color: root.remOverdue > 0 ? "#FF9F0A" : pal.fg2
+                                    font.family: pal.fam; font.pixelSize: 12
+                                }
+                            }
+                            Glyph {
+                                x: parent.width - 22; anchors.verticalCenter: parent.verticalCenter
+                                width: 12; height: 12
+                                kind: "chevR"; color: pal.fg2
+                            }
+                            MouseArea {
+                                x: 56; width: parent.width - 56; height: parent.height
+                                onClicked: ui.openPop("rem", 0)
                             }
                         }
                     }
