@@ -2862,10 +2862,12 @@ Scope {
 
     Component.onCompleted: {
         Quickshell.execDetached(["mkdir", "-p", configDir]);
+        Quickshell.execDetached(["mkdir", "-p", Quickshell.env("HOME") + "/.cache/macshell"]);
         refreshBrightness();
         refreshWifi();
         refreshKeyboardLayout();
         refreshConnections();
+        Qt.callLater(root.notifSyncLock);
     }
 
     // ═════════════ SETTINGS ═════════════
@@ -2882,6 +2884,26 @@ Scope {
     property var notifRefs: ({})
     ListModel { id: notifHist }              // notification centre history, newest first
     ListModel { id: notifToasts }            // popups currently on screen, newest first
+
+    // MacLock reads this small private copy (app, icon, time only) while the session is locked.
+    // It intentionally does not contain the notification summary/body: the lock screen keeps the
+    // same "previews when unlocked" privacy as macOS.
+    readonly property string lockNotifPath: Quickshell.env("HOME") + "/.cache/macshell/lock-notifs.json"
+    FileView {
+        id: lockNotifStore
+        path: root.lockNotifPath
+        printErrors: false
+    }
+    function notifSyncLock() {
+        var out = [];
+        for (var i = 0; i < notifHist.count && i < 8; i++) {
+            var r = notifHist.get(i);
+            out.push({ id: r.nid, app: r.app, icon: r.icon, time: r.time });
+        }
+        lockNotifStore.setText(JSON.stringify(out));
+    }
+    // Clear stale cards from an earlier session once the bar has started.
+    Timer { interval: 450; running: true; onTriggered: root.notifSyncLock() }
 
     NotificationServer {
         id: notifServer
@@ -2923,6 +2945,7 @@ Scope {
             while (notifToasts.count > 4) notifToasts.remove(notifToasts.count - 1);
         }
         if (!root.notifOpen) root.notifUnread++;
+        root.notifSyncLock();
         try { n.closed.connect(function () { root.notifToastRemove(id); }); } catch (e) {}
     }
     property bool notifOpen: false
@@ -2936,6 +2959,7 @@ Scope {
         if (i >= 0) notifHist.remove(i);
         var n = root.notifRefs[id];
         if (n) { try { n.dismiss(); } catch (e) {} delete root.notifRefs[id]; }
+        root.notifSyncLock();
     }
     function notifClear() {
         notifToasts.clear();
@@ -2946,6 +2970,7 @@ Scope {
         notifHist.clear();
         root.notifRefs = ({});
         root.notifUnread = 0;
+        root.notifSyncLock();
     }
     function notifActivate(id) {
         var n = root.notifRefs[id];
@@ -2970,6 +2995,8 @@ Scope {
     property bool remWantShow: true
     property bool remOpen: false
     property bool remLoaded: false
+    property string remBoot: ""                // /proc/sys/kernel/random/boot_id: distinguishes a real login from a hot reload
+    property bool remBootReady: false
     property real remNow: Date.now()
     property var remAlerts: []                 // reminders that just came due: [{ id, title, due }]
     property string remDraftTitle: ""
@@ -3001,7 +3028,8 @@ Scope {
     function remPad(n) { return (n < 10 ? "0" : "") + n; }
     function remNewId() { return Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36); }
     function remCopy(r) {
-        return { id: r.id, title: r.title, due: r.due, done: r.done, notified: r.notified, created: r.created };
+        return { id: r.id, title: r.title, due: r.due, done: r.done, notified: r.notified,
+                 notifiedBoot: r.notifiedBoot || "", created: r.created };
     }
     function remSorted(a) {
         a.sort(function (x, y) {
@@ -3052,6 +3080,32 @@ Scope {
         root.remRevision++;
         root.remSave();
     }
+    // A reminder that was already alerted in an earlier boot is re-armed once after login, so
+    // "due while the machine was off" is never silently lost. A hot reload in the same boot keeps
+    // the current notified state, so it does not pop the same alert again.
+    function remRearmOverdue() {
+        if (!root.remLoaded || !root.remBootReady) return;
+        var now = Date.now(), a = root.reminders.slice(), changed = false;
+        for (var i = 0; i < a.length; i++) {
+            if (a[i].done || a[i].due > now || !a[i].notified) continue;
+            if ((a[i].notifiedBoot || "") === root.remBoot) continue;
+            var o = root.remCopy(a[i]);
+            o.notified = false;
+            o.notifiedBoot = "";
+            a[i] = o;
+            changed = true;
+        }
+        if (changed) root.remCommit(a);
+    }
+    function remBootDone(s) {
+        if (root.remBootReady) return;
+        root.remBoot = String(s || "").trim() || "unknown";
+        root.remBootReady = true;
+        if (root.remLoaded) {
+            root.remRearmOverdue();
+            root.remCheck();
+        }
+    }
     function remLoad(txt) {
         var a = [];
         try {
@@ -3066,6 +3120,7 @@ Scope {
                         due: due,
                         done: r.done === true,
                         notified: r.notified === true,
+                        notifiedBoot: typeof r.notifiedBoot === "string" ? r.notifiedBoot : "",
                         created: Number(r.created) || Date.now()
                     });
                 }
@@ -3077,13 +3132,17 @@ Scope {
         root.remLoaded = true;
         root.remRevision++;
         root.remNow = Date.now();
-        Qt.callLater(root.remCheck);
+        if (root.remBootReady) {
+            root.remRearmOverdue();
+            Qt.callLater(root.remCheck);
+        }
     }
     function remAdd(title, due) {
         title = String(title).trim();
         if (title === "" || !isFinite(due)) return "";
         var a = root.reminders.slice();
-        var r = { id: root.remNewId(), title: title, due: due, done: false, notified: false, created: Date.now() };
+        var r = { id: root.remNewId(), title: title, due: due, done: false, notified: false,
+                  notifiedBoot: "", created: Date.now() };
         a.push(r);
         root.remCommit(a);
         return r.id;
@@ -3099,17 +3158,19 @@ Scope {
             var o = root.remCopy(a[i]);
             o.done = true;
             o.notified = true;
+            o.notifiedBoot = root.remBoot;
             a[i] = o;
         }
         root.remAlerts = root.remAlerts.filter(function (r) { return r.id !== id; });
         root.remCommit(a);
     }
     function remToggle(id) {
-        var a = root.reminders.slice(), now = Date.now();
+        var a = root.reminders.slice();
         for (var i = 0; i < a.length; i++) if (a[i].id === id) {
             var o = root.remCopy(a[i]);
             o.done = !o.done;
-            o.notified = o.done ? true : (o.due <= now);
+            o.notified = o.done;
+            o.notifiedBoot = o.done ? root.remBoot : "";
             a[i] = o;
         }
         root.remAlerts = root.remAlerts.filter(function (r) {
@@ -3125,6 +3186,7 @@ Scope {
             o.due = due;
             o.done = false;
             o.notified = false;
+            o.notifiedBoot = "";
             a[i] = o;
         }
         root.remAlerts = root.remAlerts.filter(function (r) { return r.id !== id; });
@@ -3134,6 +3196,7 @@ Scope {
         root.remCommit(root.reminders.filter(function (r) { return !r.done; }));
     }
     function remCheck() {
+        if (!root.remBootReady) return;
         var now = Date.now();
         root.remNow = now;
         var a = root.reminders.slice(), changed = false, hits = [];
@@ -3141,6 +3204,7 @@ Scope {
             if (a[i].done || a[i].notified || a[i].due > now) continue;
             var o = root.remCopy(a[i]);
             o.notified = true;
+            o.notifiedBoot = root.remBoot;
             a[i] = o;
             hits.push({ id: o.id, title: o.title, due: o.due });
             changed = true;
@@ -3209,6 +3273,14 @@ Scope {
             root.remCheck();
         }
     }
+    Process {
+        id: remBootProc
+        command: ["cat", "/proc/sys/kernel/random/boot_id"]
+        running: true
+        property string out: ""
+        stdout: StdioCollector { onStreamFinished: remBootProc.out = text }
+        onExited: root.remBootDone(remBootProc.out)
+    }
     Timer {
         interval: 1000
         repeat: true
@@ -3224,6 +3296,8 @@ Scope {
             if (String(title).trim() === "") return;
             root.remAdd(String(title), Date.now() + Math.max(1, minutes) * 60000);
         }
+        function done(id: string): void { root.remDone(String(id)); }
+        function snooze(id: string, minutes: int): void { root.remSnooze(String(id), Math.max(1, minutes)); }
     }
 
     // ═════════════ WALLPAPER PICKER (CTRL + ALT + W) ═════════════

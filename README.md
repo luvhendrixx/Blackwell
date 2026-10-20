@@ -21,7 +21,8 @@ _A minimal setup focused on a balance of performance, aesthetics, productivity a
 
 - Shell - zsh + starship
 
-- Reminders — `ALT + R` opens a Liquid Glass reminder popover (name + duration or clock time, AM/PM or 24-hour), with a menu-bar icon, Control Center tile, due alerts (snooze / done) and a Settings → Reminders pane. Saved to `~/.config/macbar/reminders.json`.
+- Reminders — `ALT + R` opens a Liquid Glass reminder popover (name + duration or clock time, AM/PM or 24-hour), with a menu-bar icon, Control Center tile, due alerts (snooze / done) and a Settings → Reminders pane. Saved to `~/.config/macbar/reminders.json`. Future reminders survive reboot; overdue unacknowledged ones re-alert once after login.
+- Lock-screen notifications — MacLock mirrors the latest notifications as normal glass cards (app, icon, time; previews stay hidden like macOS) and shows the next reminder as a live countdown, with Snooze / Done actions when one is due.
 
 - Btfs file system
 
