@@ -257,6 +257,49 @@ Item {
         onFileChanged: reload()
     }
     readonly property var clockSt: { try { return clockFile.loaded ? JSON.parse(clockFile.text()) : null; } catch (e) { return null; } }
+    // Reminders double as the shell's timers: the next pending one gets a live countdown card,
+    // and an overdue one shows a due card with Snooze / Done without unlocking first.
+    FileView {
+        id: remFile
+        path: Quickshell.env("HOME") + "/.config/macbar/reminders.json"
+        watchChanges: true; printErrors: false
+        onFileChanged: reload()
+    }
+    readonly property var remList: { try { return remFile.loaded ? JSON.parse(remFile.text()) : []; } catch (e) { return []; } }
+    property real remNowMs: Date.now()
+    Timer { interval: 1000; repeat: true; running: ls.remList.length > 0; onTriggered: ls.remNowMs = Date.now() }
+    readonly property var remNext: {
+        var best = null, now = ls.remNowMs;
+        for (var i = 0; i < ls.remList.length; i++) {
+            var r = ls.remList[i];
+            if (!r || r.done || !(r.due > now)) continue;
+            if (!best || r.due < best.due) best = r;
+        }
+        return best;
+    }
+    readonly property var remDue: {
+        var best = null, now = ls.remNowMs;
+        for (var i = 0; i < ls.remList.length; i++) {
+            var r = ls.remList[i];
+            if (!r || r.done || !(r.due <= now)) continue;
+            if (!best || r.due < best.due) best = r;
+        }
+        return best;
+    }
+    readonly property int remDueCount: {
+        var n = 0, now = ls.remNowMs;
+        for (var i = 0; i < ls.remList.length; i++) {
+            var r = ls.remList[i];
+            if (r && !r.done && r.due <= now) n++;
+        }
+        return n;
+    }
+    function remDur(ms) {
+        var s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+        return (h > 0 ? h + ":" + ls.pad2(m) : ls.pad2(m)) + ":" + ls.pad2(s % 60);
+    }
+    function remDone(id) { Quickshell.execDetached(["qs", "ipc", "call", "reminders", "done", String(id)]); }
+    function remSnooze(id) { Quickshell.execDetached(["qs", "ipc", "call", "reminders", "snooze", String(id), "10"]); }
     property real nowMs: Date.now()
     Timer { interval: 250; repeat: true; running: ls.liveKind !== ""; onTriggered: ls.nowMs = Date.now() }
     readonly property string liveKind: !clockSt ? "" : (clockSt.ringing ? "ring" : ((clockSt.timer && clockSt.timer.state && clockSt.timer.state !== "idle") ? "timer"
@@ -285,6 +328,89 @@ Item {
         move: Transition { NumberAnimation { properties: "y"; duration: 420; easing.type: Easing.OutQuint } }
         opacity: ls.shown && !ls.leaving ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: 650; easing.type: Easing.OutQuint } }
+
+        // reminder / timer live card
+        Item {
+            id: remLive
+            width: parent.width
+            readonly property var r: ls.remDue ? ls.remDue : ls.remNext
+            readonly property bool due: ls.remDue !== null
+            readonly property bool on: r !== null
+            height: on ? (due ? 112 : 76) * ls.u : 0
+            opacity: on ? 1 : 0
+            visible: opacity > 0.01
+            Behavior on height { NumberAnimation { duration: 420; easing.type: Easing.OutQuint } }
+            Behavior on opacity { NumberAnimation { duration: 320 } }
+            clip: true
+            Glass { anchors.fill: parent; src: glassTex; frame: ls; cornerR: 22 * ls.u; thickness: 20; tint: remLive.due ? 0.46 : 0.42; shadowAmt: 0.35 }
+
+            Item {
+                x: 16 * ls.u; y: 14 * ls.u
+                width: 48 * ls.u; height: 48 * ls.u
+                Rectangle {
+                    anchors.fill: parent; radius: width / 2
+                    color: Qt.rgba(1, 0.624, 0.039, remLive.due ? 0.26 : 0.16)
+                }
+                ClockGlyph {
+                    anchors.centerIn: parent
+                    kind: "timer"; color: "#FF9F0A"
+                    width: 26 * ls.u; height: width
+                }
+            }
+            Column {
+                x: 78 * ls.u; y: 14 * ls.u
+                width: parent.width - x - 16 * ls.u
+                spacing: 2 * ls.u
+                Text {
+                    text: remLive.due ? "Reminder due" : "Reminder"
+                    color: "#FF9F0A"; font.family: ls.fam; font.pixelSize: 13 * ls.u; font.weight: Font.DemiBold
+                }
+                Text {
+                    width: parent.width; elide: Text.ElideRight
+                    text: remLive.r ? (remLive.r.title || "Reminder") : ""
+                    color: "white"; font.family: ls.fam; font.pixelSize: 16 * ls.u; font.weight: Font.DemiBold
+                }
+                Text {
+                    width: parent.width; elide: Text.ElideRight
+                    text: remLive.due
+                        ? ("Due now" + (ls.remDueCount > 1 ? "  ·  " + (ls.remDueCount - 1) + " more" : ""))
+                        : "in " + ls.remDur(remLive.r ? remLive.r.due - ls.remNowMs : 0)
+                    color: remLive.due ? "#FF9F0A" : Qt.rgba(1, 1, 1, 0.72)
+                    font.family: ls.fam; font.pixelSize: 12 * ls.u
+                    font.features: { "tnum": 1 }
+                }
+            }
+
+            Row {
+                id: remActions
+                visible: remLive.due
+                x: 16 * ls.u; width: parent.width - 32 * ls.u
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 12 * ls.u
+                spacing: 8 * ls.u
+                Repeater {
+                    model: [{ label: "Snooze 10 min", action: "snooze" }, { label: "Done", action: "done" }]
+                    delegate: Rectangle {
+                        required property var modelData
+                        width: (remActions.width - remActions.spacing) / 2
+                        height: 30 * ls.u; radius: height / 2
+                        color: modelData.action === "done" ? "#FF9F0A" : Qt.rgba(1, 1, 1, remBtn.pressed ? 0.30 : 0.18)
+                        Text {
+                            anchors.centerIn: parent; text: parent.modelData.label
+                            color: parent.modelData.action === "done" ? "black" : "white"
+                            font.family: ls.fam; font.pixelSize: 13 * ls.u; font.weight: Font.DemiBold
+                        }
+                        MouseArea {
+                            id: remBtn
+                            anchors.fill: parent
+                            onClicked: {
+                                if (parent.modelData.action === "done") ls.remDone(remLive.r.id);
+                                else ls.remSnooze(remLive.r.id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // live activity
         Item {
@@ -345,7 +471,7 @@ Item {
                         width: (liveCard.width - 40 * ls.u) / (ls.clockSt.ringing.kind === "timer" ? 1 : 2); height: 30 * ls.u; radius: height / 2
                         color: modelData === "Stop" ? "#FF9F0A" : Qt.rgba(1, 1, 1, ringBtn.pressed ? 0.32 : 0.2)
                         Text { anchors.centerIn: parent; text: parent.modelData; color: parent.modelData === "Stop" ? "black" : "white"; font.family: ls.fam; font.pixelSize: 13 * ls.u; font.weight: Font.DemiBold }
-                        MouseArea { id: ringBtn; anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "-c", "MacShell", "ipc", "call", "clock", parent.modelData === "Stop" ? "stop" : "snooze"]) }
+                        MouseArea { id: ringBtn; anchors.fill: parent; onClicked: Quickshell.execDetached(["qs", "ipc", "call", "clock", parent.modelData === "Stop" ? "stop" : "snooze"]) }
                     }
                 }
             }
@@ -361,6 +487,8 @@ Item {
                 required property string icon
                 required property real time
                 required property int index
+                readonly property bool hasIcon: icon !== ""
+                    && icon.indexOf("image://icon/preferences-system-notifications") !== 0
                 width: rightCol.width
                 // a swiped card folds its slot away so the ones below glide up
                 height: (gone ? 0 : 62 * ls.u)
@@ -380,18 +508,34 @@ Item {
                     id: flyOff
                     property real to: 0
                     NumberAnimation { target: nc; property: "dragX"; to: flyOff.to; duration: 260; easing.type: Easing.OutCubic }
-                    ScriptAction { script: { nc.gone = true; Quickshell.execDetached(["qs", "-c", "MacShell", "ipc", "call", "notifications", "dismiss", String(nc.nid)]); } }
+                    ScriptAction { script: { nc.gone = true; Quickshell.execDetached(["qs", "ipc", "call", "notifications", "dismiss", String(nc.nid)]); } }
                 }
 
                 Glass { anchors.fill: parent; src: glassTex; frame: ls; cornerR: 20 * ls.u; thickness: 20; tint: 0.40; shadowAmt: 0.3 }
                 Rectangle { anchors.fill: parent; radius: 20 * ls.u; color: "white"; opacity: ncMa.pressed ? 0.12 : (ncMa.containsMouse ? 0.06 : 0); Behavior on opacity { NumberAnimation { duration: 140 } } }
-                Image {
+                Item {
                     x: 14 * ls.u; anchors.verticalCenter: parent.verticalCenter
                     width: 34 * ls.u; height: width
-                    // apps without an icon (MacShell's own, notify-send…) get the system notifications icon
-                    source: nc.icon && status !== Image.Error ? nc.icon : "image://icon/preferences-system-notifications"
-                    sourceSize: Qt.size(96, 96)
-                    smooth: true; mipmap: true
+                    Rectangle {
+                        anchors.fill: parent; radius: width / 2
+                        visible: !ncIcon.visible
+                        color: Qt.rgba(1, 1, 1, 0.14)
+                    }
+                    // apps without a usable icon (MacShell's own, notify-send…) get a plain bell
+                    Image {
+                        id: ncIcon
+                        anchors.fill: parent
+                        source: nc.hasIcon ? nc.icon : ""
+                        visible: nc.hasIcon && source !== "" && status === Image.Ready
+                        sourceSize: Qt.size(96, 96)
+                        smooth: true; mipmap: true
+                    }
+                    Glyph {
+                        anchors.centerIn: parent
+                        visible: !ncIcon.visible
+                        kind: "bell"; color: Qt.rgba(1, 1, 1, 0.88)
+                        width: 22 * ls.u; height: width
+                    }
                 }
                 Column {
                     x: 60 * ls.u; anchors.verticalCenter: parent.verticalCenter
