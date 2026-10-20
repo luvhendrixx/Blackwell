@@ -268,6 +268,11 @@ ShellRoot {
     IpcHandler {
         target: "notifications"
         function toggle(): void { macBar.notifOpen = !macBar.notifOpen; }
+        function dismiss(nid: int): void { macBar.notifDelete(nid); }
+        function dismissOne(): void {
+            if (macBar.notifHist.count > 0) macBar.notifDelete(macBar.notifHist.get(0).nid);
+        }
+        function clear(): void { macBar.notifClear(); }
     }
     IpcHandler {
         target: "notification"
