@@ -21,6 +21,8 @@ _A minimal setup focused on a balance of performance, aesthetics, productivity a
 
 - Shell - zsh + starship
 
+- Reminders — `ALT + R` opens a Liquid Glass reminder popover (name + duration or clock time, AM/PM or 24-hour), with a menu-bar icon, Control Center tile, due alerts (snooze / done) and a Settings → Reminders pane. Saved to `~/.config/macbar/reminders.json`.
+
 - Btfs file system
 
 - For your Wallpapers, drag and drop them into the `~/Pictures/` dir and you can use the wallpaper picker to set it as your wallpaper
@@ -64,6 +66,7 @@ From there **Reboot** and you ought to be good to go.
 | `SUPER + C` / `SUPER + V`             | Universal copy / paste                           |
 | `SUPER + I`                           | Settings                                         |
 | `SUPER + N`                           | Notifications                                    |
+| `ALT + R`                             | Reminders (view / add / snooze)                  |
 | `SUPER + F`                           | Fullscreen                                       |
 | `SUPER + O`                           | Opacity                                          |
 | `SUPER + H J K L` / arrows            | Focus window                                     |
