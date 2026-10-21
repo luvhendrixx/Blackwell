@@ -6,7 +6,7 @@
 local home = os.getenv("HOME")
 
 mainMod = "SUPER"
-terminal = "ghostty"
+terminal = "kitty"
 menu = "rofi -show drun"
 fileManager = "nautilus"
 browser = "firefox"
