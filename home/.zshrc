@@ -52,6 +52,7 @@ alias fm="spf"
 alias zed="zeditor"
 alias ff="fastfetch"
 # alias code="codium"
+alias cv="heif-convert" # a terminal util for easy conversion of files to diff fmts
 
 # ---------- Git metrics (on-demand, replaces starship git_metrics) ----------
 gitstats() {
