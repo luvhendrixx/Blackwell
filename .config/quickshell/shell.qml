@@ -13,6 +13,8 @@
 // Quickshell serves its config root through the qsintercept scheme, which Qt
 // refuses to cache; a normal disk module can be bytecode-cached by Qt. Keep
 // QML_IMPORT_PATH pointing at ~/.config/quickshell-modules (see hyprland.lua).
+// ~/.config/quickshell/MacShell is only a relative symlink fallback for installs
+// that pulled before creating the top-level module link.
 // Quickshell does not watch external module files, so restart qs after editing
 // MacBar.qml/MacDock.qml etc.; the first start after an edit rebuilds cache.
 //
