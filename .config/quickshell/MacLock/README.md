@@ -14,6 +14,10 @@ hl.bind("SUPER + L", hl.dsp.exec_cmd("sh ~/.config/quickshell/MacLock/lock-via-i
 
 This uses the `hl.bind` / `hl.dsp.exec_cmd` style. Change `SUPER + L` if that key is already used, and adjust the helper path if you installed MacLock elsewhere.
 
+## PAM
+
+MacLock authenticates through `/etc/pam.d/maclock`. The repository's `install.sh` installs it from `system/pam.d/maclock`; if you deploy this directory by hand, copy that file to `/etc/pam.d/maclock` (or keep the old `/etc/pam.d/hyprlock`, which MacLock falls back to).
+
 ## Direct IPC
 
 If an IPC-capable MacLock instance is currently running, the direct IPC command is:
