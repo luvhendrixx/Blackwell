@@ -1,7 +1,7 @@
 // macbar — a macOS  style menu bar for Hyprland, built on Quickshell.
 //
 // Part of the combined macbar + macdock shell (see shell.qml). Keep this file, MacDock.qml, shell.qml,
-// liquidglass.frag and apple-logo-*.svg together in ~/.config/quickshell/macbar/ and run:  qs -c macbar
+// liquidglass.frag and apple-logo-*.svg together in ~/.config/quickshell-modules/MacShell/ and run:  qs
 //
 // Settings live in ~/.config/macbar/settings.json (Apple menu → System Settings…, or Control Center → Edit Controls).
 // On first run, appearance (dark mode, accent, font, glass tuning, wallpaper) is inherited from macdock's settings.json.

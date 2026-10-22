@@ -1,17 +1,24 @@
 // macbar + macdock in ONE Quickshell process.
 //
 // Install (everything together in one config):
-//   ~/.config/quickshell/macbar/shell.qml       (this file)
-//   ~/.config/quickshell/macbar/MacBar.qml      (the menu bar)
-//   ~/.config/quickshell/macbar/MacDock.qml     (the Dock)
-//   ~/.config/quickshell/macbar/MacWidgets.qml  (desktop widgets)
-//   ~/.config/quickshell/macbar/WeatherWidget.qml, CalendarWidget.qml, ClockWidget.qml, PlayerWidget.qml, WeatherIcon.qml
-//   ~/.config/quickshell/macbar/liquidglass.frag
-// Run:  qs -c macbar        (remove your separate `qs -c macdock` autostart)
+//   ~/.config/quickshell/shell.qml                       (this file)
+//   ~/.config/quickshell-modules/MacShell/MacBar.qml     (the menu bar)
+//   ~/.config/quickshell-modules/MacShell/MacDock.qml    (the Dock)
+//   ~/.config/quickshell-modules/MacShell/MacWidgets.qml (desktop widgets)
+//   ~/.config/quickshell-modules/MacShell/WeatherWidget.qml, CalendarWidget.qml, ClockWidget.qml, PlayerWidget.qml, WeatherIcon.qml
+//   ~/.config/quickshell-modules/MacShell/liquidglass.frag
+// Run:  qs        (remove your separate `qs -c macdock` autostart)
+//
+// MacShell is imported as a QML module from outside the config root on purpose.
+// Quickshell serves its config root through the qsintercept scheme, which Qt
+// refuses to cache; a normal disk module can be bytecode-cached by Qt. Keep
+// QML_IMPORT_PATH pointing at ~/.config/quickshell-modules (see hyprland.lua).
+// Quickshell does not watch external module files, so restart qs after editing
+// MacBar.qml/MacDock.qml etc.; the first start after an edit rebuilds cache.
 //
 // Settings stay where they were: ~/.config/macbar/settings.json and ~/.config/macdock/settings.json (+ pinned.json).
 // Layer namespaces are unchanged ("macbar" / "macdock"), so your existing layerrule / windowrule lines keep working.
-// The Spotlight IPC bind is unchanged:  qs -c macbar ipc call spotlight toggle
+// The Spotlight IPC bind is unchanged:  qs ipc call spotlight toggle
 //
 // What is shared now (this is where the memory saving comes from):
 //   * one Quickshell / Qt process instead of two,
@@ -22,6 +29,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+
+import MacShell 1.0
 
 ShellRoot {
     Scope {
@@ -64,7 +73,7 @@ ShellRoot {
         //   stage 1 (captureHold): live capture stops, the current frame finishes;
         //   stage 2 (captureCut, 0.5 s later): the capture source is released. A short hold never reaches stage 2.
         // The hold starts on every openwindow / closewindow and ends 1.2 s after the last one; the previews then resume.
-        // windowCapture = false (Dock Preferences, or  qs -c <config> ipc call glass captures false) switches the window previews off.
+        // windowCapture = false (Dock Preferences, or  qs ipc call glass captures false) switches the window previews off.
         readonly property bool windowCapture: false      // Dock removed
         property bool churn: false
         readonly property bool captureHold: churn || !windowCapture
@@ -245,13 +254,13 @@ ShellRoot {
     PowerMenu { id: legacyPowerMenu }
 
     // reopen settings even when both the Dock and the Menu Bar are disabled:
-    //   qs -c macbar ipc call settings open
+    //   qs ipc call settings open
     IpcHandler {
         target: "settings"
         function open(): void { macDock.openPrefs("general"); }
         function openPane(pane: string): void { macDock.openPrefs(pane); }
     }
-    // qs -c <config> ipc call glass captures false   (true to switch window previews back on)
+    // qs ipc call glass captures false   (true to switch window previews back on)
     IpcHandler {
         target: "glass"
         function captures(on: bool): void { macDock.windowCapture = on; }

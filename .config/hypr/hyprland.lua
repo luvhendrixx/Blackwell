@@ -23,11 +23,29 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd("awww-daemon")
 	-- awww-daemon alone draws nothing; a fresh machine would boot black.
 	hl.exec_cmd(home .. "/.config/hypr/scripts/wallpaper-init.sh")
-	hl.exec_cmd("sleep 2 && qs")
+	hl.exec_cmd("qs")
 	hl.exec_cmd(home .. "/.config/hypr/scripts/powerprofile-auto.sh")
 end)
 
 ---- ENVIRONMENT VARIABLES ----
+
+-- MacShell lives in a normal on-disk QML module so Qt can cache its compiled
+-- bytecode. Quickshell's config root uses the qsintercept scheme, which Qt
+-- refuses to cache. Without this the ~9k-line MacBar is recompiled on every
+-- launch and the bar/dock appear seconds after login.
+local qmlModules = home .. "/.config/quickshell-modules"
+local qmlImportPaths = { qmlModules }
+local inheritedQmlImportPath = os.getenv("QML_IMPORT_PATH")
+if inheritedQmlImportPath and inheritedQmlImportPath ~= "" then
+	for path in inheritedQmlImportPath:gmatch("[^:]+") do
+		if path ~= qmlModules then
+			table.insert(qmlImportPaths, path)
+		end
+	end
+end
+hl.env("QML_IMPORT_PATH", table.concat(qmlImportPaths, ":"))
+hl.env("QML_DISK_CACHE", "qmlc")
+hl.env("QML_DISK_CACHE_PATH", home .. "/.cache/quickshell/qml-engine-cache")
 
 hl.env("XCURSOR_SIZE", "15")
 hl.env("XCURSOR_THEME", "Bibata-Modern-Ice")
