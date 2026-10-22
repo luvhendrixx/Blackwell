@@ -237,14 +237,11 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     run gsettings set org.gnome.desktop.interface cursor-size 15
     run xdg-mime default org.gnome.Nautilus.desktop inode/directory
 
-    # ── MacLock: PAM stack check ────────────────────────────────────────────
-    # MacLock checks passwords with PAM (/etc/pam.d/hyprlock, provided by the
-    # hyprlock package). Warn if it's missing so the lock screen doesn't fail
-    # silently on first use.
-    if [ ! -f /etc/pam.d/hyprlock ]; then
-        warn "MacLock needs /etc/pam.d/hyprlock (from the hyprlock package) for PAM password checks."
-        warn "  Install it: sudo pacman -S hyprlock   (it's already in packages-repo.txt)"
-    fi
+    # ── MacLock: PAM stack ──────────────────────────────────────────────────
+    # MacLock checks passwords with PAM. Ship our own stack so the hyprlock
+    # package isn't needed just to provide /etc/pam.d/hyprlock.
+    say "Installing MacLock PAM config"
+    run sudo install -D -m 644 "$REPO_DIR/system/pam.d/maclock" /etc/pam.d/maclock
     # ── MacLock: compile the fragment shaders (liquidglass, burn, …) ───────
     # The QML references "*.frag.qsb" directly. Without them everything drawn
     # through ShaderEffect — cover art, contour glow, glass refraction —
@@ -272,6 +269,13 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
         fi
     fi
     say "MacLock ready: SUPER + L locks via ~/.config/quickshell/MacLock/lock-via-ipc.sh"
+fi
+
+# MacLock falls back to the old hyprlock PAM stack on installations that
+# haven't re-run install.sh yet, but a fresh install should get the dedicated
+# file above. Warn only when neither exists (e.g. after --link-only).
+if [ "$DRY_RUN" = 0 ] && [ ! -f /etc/pam.d/maclock ] && [ ! -f /etc/pam.d/hyprlock ]; then
+    warn "MacLock has no PAM config; run ./install.sh (without --link-only) to install /etc/pam.d/maclock."
 fi
 
 # ── 5. bootloader ────────────────────────────────────────────────────────────
@@ -348,5 +352,5 @@ Setup complete.
   • Keymap cheat sheet: click the  key in the bar, or run
     ~/.config/hypr/scripts/keymaps.sh
   • MacLock: SUPER + L locks the session via ~/.config/quickshell/MacLock/lock-via-ipc.sh
-    (PAM password check against /etc/pam.d/hyprlock; runs as its own Quickshell process)
+    (PAM password check against /etc/pam.d/maclock; runs as its own Quickshell process)
 EOF
