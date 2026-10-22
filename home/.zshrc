@@ -96,6 +96,8 @@ fzf() {
 
 export EDITOR="nvim"
 export VISUAL="nvim"
+export LIBVA_DRIVER_NAME=iHD
+
 
 # ---------- Languages ----------
 export GOPATH=$HOME/go
