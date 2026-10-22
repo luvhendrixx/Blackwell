@@ -16,7 +16,7 @@ This uses the `hl.bind` / `hl.dsp.exec_cmd` style. Change `SUPER + L` if that ke
 
 ## PAM
 
-MacLock authenticates through `/etc/pam.d/maclock`. The repository's `install.sh` installs it from `system/pam.d/maclock`; if you deploy this directory by hand, copy that file to `/etc/pam.d/maclock` (or keep the old `/etc/pam.d/hyprlock`, which MacLock falls back to).
+MacLock authenticates through `/etc/pam.d/maclock`. The repository's `install.sh` installs it from `system/pam.d/maclock`; if you deploy this directory by hand, copy that file to `/etc/pam.d/maclock`. If it is missing, MacLock falls back to `/etc/pam.d/login`, which is part of pambase and always present.
 
 ## Direct IPC
 
