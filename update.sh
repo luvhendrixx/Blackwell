@@ -64,6 +64,30 @@ ensure_repo() {
   fi
 }
 
+# New config directories added by a pull need their ~/.config symlink. Keep this
+# list small: install.sh links everything, but updates normally only pull.
+ensure_extra_links() {
+  local src="$REPO_DIR/.config/quickshell-modules"
+  local dst="$HOME/.config/quickshell-modules"
+
+  [[ -d $src ]] || return 0
+
+  if [[ -L $dst ]]; then
+    [[ "$(readlink "$dst")" == "$src" ]] && return 0
+    rm -f "$dst"
+  elif [[ -e $dst ]]; then
+    warn "$dst exists and is not a symlink — leaving it alone"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$dst")"
+  if ln -s "$src" "$dst"; then
+    ok "linked quickshell-modules"
+  else
+    warn "could not link quickshell-modules"
+  fi
+}
+
 # ─── system update ──────────────────────────────────────────────────────────
 do_yay() {
   log "Updating system + AUR packages (yay -Syu)..."
@@ -130,6 +154,8 @@ do_pull() {
   else
     ok "Dotfiles already up to date"
   fi
+
+  ensure_extra_links
 }
 
 # ─── status ─────────────────────────────────────────────────────────────────

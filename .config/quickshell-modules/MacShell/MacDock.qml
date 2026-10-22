@@ -1,7 +1,7 @@
 // macdock v2 — a macOS-style dock for Hyprland, built on Quickshell.
 //
 // Part of the combined macbar + macdock shell (see shell.qml). Keep this file, MacBar.qml, shell.qml and
-// liquidglass.frag together in ~/.config/quickshell/macbar/ and run:  qs -c macbar
+// liquidglass.frag together in ~/.config/quickshell-modules/MacShell/ and run:  qs
 // Pins are saved to ~/.config/macdock/pinned.json once you use "Keep in Dock".
 //
 // Settings are saved to ~/.config/macdock/settings.json (right-click the dock → Dock Preferences…).
