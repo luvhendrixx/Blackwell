@@ -34,11 +34,14 @@ end)
 -- refuses to cache. Without this the ~9k-line MacBar is recompiled on every
 -- launch and the bar/dock appear seconds after login.
 local qmlModules = home .. "/.config/quickshell-modules"
-local qmlImportPaths = { qmlModules }
+-- Fallback for machines that pulled before running install.sh: the repo keeps
+-- .config/quickshell/MacShell as a relative symlink to quickshell-modules.
+local qmlFallback = home .. "/.config/quickshell"
+local qmlImportPaths = { qmlModules, qmlFallback }
 local inheritedQmlImportPath = os.getenv("QML_IMPORT_PATH")
 if inheritedQmlImportPath and inheritedQmlImportPath ~= "" then
 	for path in inheritedQmlImportPath:gmatch("[^:]+") do
-		if path ~= qmlModules then
+		if path ~= qmlModules and path ~= qmlFallback then
 			table.insert(qmlImportPaths, path)
 		end
 	end
