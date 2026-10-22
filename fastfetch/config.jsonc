@@ -1,0 +1,41 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "kitty",
+    "source": "/home/$USER/dotfiles/Fastfetch/fastfetch/alex.png",
+    "width": 29,
+    "height": 15,
+    "padding": { "top": 1, "left": 2, "right": 3 },
+  },
+  "display": {
+    "separator": " ",
+    "color": { "keys": "38;5;251" },
+  },
+  "modules": [
+    {
+      "type": "custom",
+      "format": "{#38;5;244}● {#38;5;246}● {#38;5;248}● {#38;5;250}● {#38;5;252}● {#38;5;254}● {#38;5;255}●",
+    },
+    "break",
+    {
+      "type": "title",
+      "color": { "user": "38;5;255", "at": "38;5;248", "host": "38;5;252" },
+    },
+    "break",
+    { "type": "os", "key": "\uf303" },
+    { "type": "kernel", "key": "\uf013" },
+    { "type": "packages", "key": "\uf487" },
+    { "type": "shell", "key": "\uf489" },
+    { "type": "terminal", "key": "\ue795" },
+    { "type": "wm", "key": "\uf2d0" },
+    { "type": "theme", "key": "\uf1fc" },
+    { "type": "font", "key": "\uf031" },
+    { "type": "uptime", "key": "\uf017" },
+
+    "break",
+    {
+      "type": "custom",
+      "format": "{#38;5;244}● {#38;5;246}● {#38;5;248}● {#38;5;250}● {#38;5;252}● {#38;5;254}● {#38;5;255}●",
+    },
+  ],
+}
