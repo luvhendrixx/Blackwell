@@ -1,0 +1,14 @@
+module MacShell
+MacBar 1.0 MacBar.qml
+MacDock 1.0 MacDock.qml
+MacWidgets 1.0 MacWidgets.qml
+WeatherWidget 1.0 WeatherWidget.qml
+CalendarWidget 1.0 CalendarWidget.qml
+ClockWidget 1.0 ClockWidget.qml
+PlayerWidget 1.0 PlayerWidget.qml
+ImageWidget 1.0 ImageWidget.qml
+WidgetVisual 1.0 WidgetVisual.qml
+WeatherIcon 1.0 WeatherIcon.qml
+MarqueeText 1.0 MarqueeText.qml
+WGlyph 1.0 WGlyph.qml
+Dissolve 1.0 Dissolve.qml
