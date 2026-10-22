@@ -77,11 +77,11 @@ From there **Reboot** and you ought to be good to go.
 | `SUPER + /` / `SUPER + ALT + /`       | Zoom in / out                                    |
 | `SUPER + SHIFT + X`                   | Quickshell wheel launcher                        |
 | `SUPER + SHIFT + E`                   | Exit session                                     |
-| `SUPER + Tab`                         | Lock screen                                      |
+| `SUPER + L`                           | Lock screen (MacLock)                            |
 | `SUPER + SHIFT + GRAVE(backtick)`     | Power menu                                       |
 | `PRINT`                               | screenshot overlay                               |
 | `Volume / Brightness keys`            | wpctl / brightnessctl (+ OSD)                    |
-| `SUPER + L`                           | 43PR engine for light/dark toggles               |
+| `SUPER + ALT + L`                     | 43PR engine for light/dark toggles               |
 | `SUPER + D`                           | Toggle wallpaper picker                          |
 
 Althogh you can click on the **help** button on the waybar to pull up the full cheetsheet
