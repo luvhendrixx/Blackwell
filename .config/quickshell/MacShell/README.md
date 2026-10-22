@@ -51,7 +51,7 @@ Keep all five files in the same folder.
 | Audio device routing | `wpctl` (WirePlumber) or `pactl` |
 | Privacy indicators | PipeWire (`pw-dump`) |
 | Keep Awake | `systemd-inhibit` |
-| Lock / Sleep / Restart / Shut Down | `hyprlock`, `systemctl` (UWSM sessions are stopped via `uwsm`) |
+| Lock / Sleep / Restart / Shut Down | MacLock, `systemctl` (UWSM sessions are stopped via `uwsm`) |
 | Trash watching / emptying | `inotify-tools` (`inotifywait`), `ktrash6`/`ktrash5`, or a file manager (`dolphin`, `nautilus`, `thunar`, `nemo`, `pcmanfm-qt`) |
 | Folder pickers in Settings | `zenity`, `kdialog` or `yad` |
 | "About This Linux" | `fastfetch` or `neofetch` |

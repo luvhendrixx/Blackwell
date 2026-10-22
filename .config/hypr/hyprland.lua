@@ -64,6 +64,10 @@ hl.config({
 	misc = {
 		disable_hyprland_logo = true,
 		disable_splash_rendering = true,
+		-- If the session-lock client (MacLock) ever dies while locked, let a
+		-- fresh instance take over the existing lock instead of stranding the
+		-- session on Hyprland's "lockscreen app died" screen until reboot.
+		allow_session_lock_restore = true,
 	},
 })
 

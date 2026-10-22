@@ -171,10 +171,6 @@ Item {
                     label: "RULES"
                     path: "~/.config/hypr/rules.lua"
                 }
-                ConfigButton {
-                    label: "LOCK SCREEN"
-                    path: "~/.config/hypr/hyprlock.conf"
-                }
             }
             Text {
                 text: "ROFI"

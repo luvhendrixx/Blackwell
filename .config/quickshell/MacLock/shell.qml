@@ -4,9 +4,11 @@
 //   MACLOCK_DAEMON=1 qs -c MacLock        start unlocked for an IPC-triggered lock
 //   MACLOCK_PREVIEW=1 qs -c MacLock       draw it as an overlay window instead of a real lock (for tweaking)
 //
-// Runs as its own process on purpose: a MacShell crash can never take the lock with it, and maclock.sh
-// relaunches this one if it dies (Hyprland's misc:allow_session_lock_restore lets the new instance take over).
-// Password check: PAM, /etc/pam.d/hyprlock (same stack hyprlock uses).
+// Runs as its own process on purpose: a MacShell crash can never take the lock with it, and
+// lock-via-ipc.sh supervises this one and relaunches it if it dies (Hyprland's
+// misc:allow_session_lock_restore lets the new instance take the orphaned lock over).
+// Password check: PAM, /etc/pam.d/maclock (installed by install.sh; older installs
+// that only have hyprlock's PAM file keep working until install.sh is re-run).
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -20,6 +22,16 @@ ShellRoot {
     id: root
     readonly property bool preview: Quickshell.env("MACLOCK_PREVIEW") === "1"
     readonly property bool daemonMode: Quickshell.env("MACLOCK_DAEMON") === "1"
+
+    // install.sh ships /etc/pam.d/maclock. Fall back to hyprlock's stack only
+    // for installations that haven't re-run the installer yet.
+    FileView {
+        id: maclockPamFile
+        path: "/etc/pam.d/maclock"
+        blockLoading: true
+        printErrors: false
+    }
+    readonly property bool hasMaclockPam: maclockPamFile.loaded
     // Default launch keeps the original behavior and locks immediately. In daemon mode, wait for IPC.
     property bool lockRequested: !daemonMode
     function requestLock() {
@@ -143,7 +155,7 @@ ShellRoot {
     PamContext {
         id: pam
         configDirectory: "/etc/pam.d"
-        config: "hyprlock"
+        config: root.hasMaclockPam ? "maclock" : "hyprlock"
         onPamMessage: {
             if (this.responseRequired) this.respond(lockState.pass);
         }

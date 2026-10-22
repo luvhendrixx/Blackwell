@@ -45,7 +45,6 @@ hl.bind(mainMod .. " + E", hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + B", hl.dsp.exec_cmd(browser))
 hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 
-hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("hyprlock")) -- Lock screen (hyprlock)
 hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("sh " .. home .. "/.config/quickshell/MacLock/lock-via-ipc.sh")) -- Lock screen (MacLock, PAM)
 hl.bind(mainMod .. " + ALT + L", hl.dsp.exec_cmd("python3 " .. home .. "/.config/43pr/bin/theme.py toggle")) -- Light/dark toggle (moved off SUPER+L)
 

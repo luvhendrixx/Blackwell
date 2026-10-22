@@ -1,0 +1,4 @@
+# PAM configuration for MacLock, the Quickshell session lock.
+# Authentication is delegated to the same stack as the login service.
+# Installed by install.sh to /etc/pam.d/maclock (root:root, 0644).
+auth        include     login
