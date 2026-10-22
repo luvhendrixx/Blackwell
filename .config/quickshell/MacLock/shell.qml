@@ -7,8 +7,8 @@
 // Runs as its own process on purpose: a MacShell crash can never take the lock with it, and
 // lock-via-ipc.sh supervises this one and relaunches it if it dies (Hyprland's
 // misc:allow_session_lock_restore lets the new instance take the orphaned lock over).
-// Password check: PAM, /etc/pam.d/maclock (installed by install.sh; older installs
-// that only have hyprlock's PAM file keep working until install.sh is re-run).
+// Password check: PAM, /etc/pam.d/maclock (installed by install.sh). If that
+// file is missing we fall back to /etc/pam.d/login, which always exists.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -23,8 +23,8 @@ ShellRoot {
     readonly property bool preview: Quickshell.env("MACLOCK_PREVIEW") === "1"
     readonly property bool daemonMode: Quickshell.env("MACLOCK_DAEMON") === "1"
 
-    // install.sh ships /etc/pam.d/maclock. Fall back to hyprlock's stack only
-    // for installations that haven't re-run the installer yet.
+    // install.sh ships /etc/pam.d/maclock. Never depend on a PAM file being
+    // present: /etc/pam.d/login is part of pambase and always available.
     FileView {
         id: maclockPamFile
         path: "/etc/pam.d/maclock"
@@ -103,7 +103,16 @@ ShellRoot {
             if (busy || unlocking || pass.length === 0) return;
             busy = true;
             message = "";
-            if (!pam.start()) { busy = false; fail("Couldn't start authentication"); }
+            if (!pam.start()) {
+                // A missing or broken dedicated stack must not lock us out:
+                // /etc/pam.d/login is always present with pambase.
+                if (pam.config !== "login") {
+                    pam.config = "login";
+                    if (pam.start()) return;
+                }
+                busy = false;
+                fail("Couldn't start authentication");
+            }
         }
         function fail(msg) {
             pass = "";
@@ -155,7 +164,7 @@ ShellRoot {
     PamContext {
         id: pam
         configDirectory: "/etc/pam.d"
-        config: root.hasMaclockPam ? "maclock" : "hyprlock"
+        config: root.hasMaclockPam ? "maclock" : "login"
         onPamMessage: {
             if (this.responseRequired) this.respond(lockState.pass);
         }

@@ -238,8 +238,9 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
     run xdg-mime default org.gnome.Nautilus.desktop inode/directory
 
     # ── MacLock: PAM stack ──────────────────────────────────────────────────
-    # MacLock checks passwords with PAM. Ship our own stack so the hyprlock
-    # package isn't needed just to provide /etc/pam.d/hyprlock.
+    # MacLock checks passwords with PAM. Ship a dedicated stack so it doesn't
+    # depend on hyprlock; if this file is ever missing, MacLock falls back to
+    # /etc/pam.d/login (always present via pambase).
     say "Installing MacLock PAM config"
     run sudo install -D -m 644 "$REPO_DIR/system/pam.d/maclock" /etc/pam.d/maclock
     # ── MacLock: compile the fragment shaders (liquidglass, burn, …) ───────
@@ -269,13 +270,6 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
         fi
     fi
     say "MacLock ready: SUPER + L locks via ~/.config/quickshell/MacLock/lock-via-ipc.sh"
-fi
-
-# MacLock falls back to the old hyprlock PAM stack on installations that
-# haven't re-run install.sh yet, but a fresh install should get the dedicated
-# file above. Warn only when neither exists (e.g. after --link-only).
-if [ "$DRY_RUN" = 0 ] && [ ! -f /etc/pam.d/maclock ] && [ ! -f /etc/pam.d/hyprlock ]; then
-    warn "MacLock has no PAM config; run ./install.sh (without --link-only) to install /etc/pam.d/maclock."
 fi
 
 # ── 5. bootloader ────────────────────────────────────────────────────────────
