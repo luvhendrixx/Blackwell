@@ -456,8 +456,13 @@ Item {
         property real r: 7
         Rectangle {
             id: artMask
-            anchors.fill: parent
-            radius: art.r
+            // FIXED-resolution rounded square, never resized: during the hover glide the art resizes
+            // every frame, and a mask that follows it would force a GPU mask-texture rebuild per frame
+            // (that's the cover lag). MultiEffect stretches the mask with normalized coordinates, so
+            // one static texture covers any size; the art is square, so corners stay circular.
+            readonly property real res: 512
+            width: res; height: res
+            radius: res * art.r / Math.max(1, art.width)
             visible: false
             layer.enabled: true
         }
