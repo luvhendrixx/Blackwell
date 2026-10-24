@@ -121,7 +121,7 @@ if [ "$LINK_ONLY" = 0 ]; then
   # people who trimmed the list. Failure here is not fatal.
   say "Ensuring helper tools are present"
   # shellcheck disable=SC2046
-  run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick libvips ||
+  run sudo pacman -S --needed --noconfirm brightnessctl rofimoji wtype keyd python-fonttools imagemagick libvips wf-recorder ||
     warn "Some helper tools failed to install."
 fi
 
@@ -234,6 +234,9 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
       warn "The CachyOS repo is not enabled; set it up first (see cachyos.org), then re-run with --cachyos."
     fi
   fi
+  say "Installing fallback kernels (ZEN + stock linux, so limine always has a bootable entry)"
+  run sudo pacman -S --needed --noconfirm linux-zen linux ||
+    warn "Fallback kernel install failed."
   say "Enabling pacman housekeeping"
   run sudo systemctl enable --now paccache-hook.service 2>/dev/null
   run sudo systemctl enable --now pacman-orphans.timer 2>/dev/null
