@@ -2,7 +2,6 @@
 // avatar + password); the others show the wallpaper and the clock only, but still forward typing.
 import QtQuick
 import QtQuick.Effects
-import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Mpris
@@ -52,21 +51,16 @@ Item {
             scale: ls.leaving ? 1.06 : (ls.shown ? 1.0 : 1.09)
             Behavior on scale { NumberAnimation { duration: ls.leaving ? 520 : 650; easing.type: Easing.OutQuint } }
         }
-        // animated wallpaper: the same video MacShell plays on the desktop, muted and looping
+        // animated wallpaper: the same video MacShell plays on the desktop, muted and looping.
+        // Out-of-line (LockVideo.qml) so a missing QtMultimedia module can't abort the
+        // whole LockScreen: Loader failure is contained, the lock falls back to static.
         Loader {
             id: wallVideo
             anchors.fill: wall
             scale: wall.scale
             active: ls.st.wallpaperVideo !== ""
-            sourceComponent: Item {
-                MediaPlayer {
-                    source: "file://" + ls.st.wallpaperVideo
-                    loops: MediaPlayer.Infinite
-                    videoOutput: vo
-                    Component.onCompleted: play()
-                }
-                VideoOutput { id: vo; anchors.fill: parent; fillMode: VideoOutput.PreserveAspectCrop }
-            }
+            source: "LockVideo.qml"
+            onLoaded: item.video = ls.st.wallpaperVideo
         }
         // the wallpaper softens and dims while you're entering the password
         MultiEffect {
@@ -659,7 +653,7 @@ Item {
                 animateWidth: false         // box snaps to the new width; the digits stay centred through the morph
                 stretch: false
                 scaleIn: 1.03; scaleOut: 0.97
-                // 12- or 24-hour, as set in MacShell (no AM/PM, like the macOS / iOS lock screen)
+                // 12- or 24-hour, as set in MacShell
                 // (Qt's "h" only goes 12-hour together with AP, so the hour is computed here)
                 text: ls.st.use24h ? Qt.formatTime(ls.st.now, "H:mm") : ((ls.st.now.getHours() % 12) || 12) + Qt.formatTime(ls.st.now, ":mm")
                 color: "white"
@@ -670,6 +664,24 @@ Item {
                 font.letterSpacing: (ls.ckFont === "condensed" ? -2 : (ls.ckWeight < 330 ? 0 : -1.5)) * ls.u
                 renderType: Text.QtRendering
                 visible: false
+            }
+            // small AM/PM tucked against the digits in 12-hour mode, reading like "11:15AM"
+            // (24-hour shows none, like macOS): baseline-aligned with the time via MorphText's
+            // baselineY so it hugs the digits' bottom right and keeps pace through the morph
+            Text {
+                id: loopLabel
+                visible: !ls.st.use24h
+                text: ls.st.now.getHours() < 12 ? "AM" : "PM"
+                color: Qt.rgba(1, 1, 1, 0.6)
+                anchors.left: timeTxt.right
+                anchors.leftMargin: Math.max(3, ls.clockPx * 0.04)
+                TextMetrics { id: labelFm; font: loopLabel.font }
+                // put this text's baseline exactly on the time's baseline
+                y: timeTxt.y + timeTxt.baselineY - labelFm.ascent
+                font.family: ls.fam; font.pixelSize: ls.clockPx * 0.15; font.weight: Font.DemiBold
+                font.letterSpacing: 2 * ls.u
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 0.5; shadowOpacity: 0.3; shadowVerticalOffset: 1 }
             }
             ShaderEffectSource {
                 id: timeMaskRaw

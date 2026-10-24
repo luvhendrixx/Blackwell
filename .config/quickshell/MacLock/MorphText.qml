@@ -34,6 +34,11 @@ Item {
     property real alignT: horizontalAlignment === Text.AlignHCenter ? 0.5 : (horizontalAlignment === Text.AlignRight ? 1 : 0)
     Behavior on alignT { enabled: mt.ready; NumberAnimation { duration: mt.alignDuration; easing.type: Easing.OutQuint } }
 
+    // y of the current text's baseline inside this Item. Both layers share the same font and
+    // box, so either measures it. Companions that must sit on the digits' baseline (e.g. the
+    // LockScreen AM/PM label) read this instead of guessing from the box height.
+    readonly property real baselineY: (flip ? b : a).y + (flip ? b : a).baselineY
+
     property bool flip: false
     property bool ready: false
     Component.onCompleted: { a.text = text; ready = true; }
@@ -58,6 +63,10 @@ Item {
         property string text: ""
         property real bl: 0
         readonly property real textW: crisp.implicitWidth
+        // exact distance from the layer's top to the glyph baseline (the box height alone
+        // can't reveal it, and descender space below the baseline is not part of the digits)
+        readonly property real baselineY: fm.ascent
+        TextMetrics { id: fm; font: mt.font }
         implicitHeight: crisp.implicitHeight
         // as wide as the text itself (only clamped to the box when it elides), placed by the animated alignment —
         // never squeezed: a squeezed left-aligned Text overflows to the right (the clock drifted right and got cropped)
