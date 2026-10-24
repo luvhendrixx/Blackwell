@@ -113,7 +113,7 @@ Scope {
     property bool showBatteryPercent: true
     property bool showTray: true
     property bool showSearch: true
-    property string webSearchEngine: "https://duckduckgo.com/?q="   // web-search base URL; the encoded query is appended to it
+    property string webSearchEngine: ""   // optional web-search override: a "?q=" style base URL whose encoded query it appends; "" = hand the search straight to the browser, which uses its own default engine
     property bool weekStartsMonday: false
     property string terminal: "ghostty"
     property string launcher: ""              // "" = built-in Spotlight; set a command (rofi, fuzzel, ...) to use an external launcher instead
@@ -1204,6 +1204,14 @@ Scope {
         }
     }
 
+    // ═════════════ HELP TAB: keybinds sheet (Menu Bar → Help → "Hyprland Keybinds") ═════════════
+    KeybindsWindow {
+        id: kbWin
+        darkMode: root.darkMode
+        accentColor: root.accent
+        fam: root.fontFamily
+    }
+
     // ═════════════ STATE & DATA SOURCES ═════════════
     SystemClock { id: clock; precision: root.showSeconds ? SystemClock.Seconds : SystemClock.Minutes }
 
@@ -1928,11 +1936,55 @@ Scope {
     function forceQuitActive(aw) {
         if (aw && aw.pid > 0) Quickshell.execDetached(["kill", "-9", String(Math.floor(aw.pid))]);
     }
-    function helpFor(id, n) {    // man page if there is one, otherwise a web search
+    function helpFor(id, n) {    // man page if there is one, otherwise hand the browser the query
         var c = (id || "").toLowerCase().replace(/[^a-z0-9._+-]/g, "");
         if (c === "") return;
-        var q = encodeURIComponent(n + " linux help").replace(/'/g, "%27");
-        sh("if man -w " + c + " >/dev/null 2>&1; then " + terminal + " -e man " + c + "; else xdg-open 'https://duckduckgo.com/?q=" + q + "'; fi");
+        helpQuery = n + " linux help";           // raw text: browsers build their own encoded URL
+        helpManPage = c;
+        manProbe.running = true;
+    }
+
+    // "Help → <app> Help": the man probe below exits 3 when there is no man page, and the
+    // browser hand-off takes over from QML — so the search engine stays the user's.
+    property string helpQuery: ""
+    property string helpManPage: ""            // sanitized name the man probe tests
+    Process {
+        id: manProbe
+        // man page in the user's terminal if one exists; otherwise exit 3 → browser hand-off
+        command: ["sh", "-c",
+            "if man -w \"$1\" >/dev/null 2>&1; then " + root.terminal + " -e man \"$1\"; else exit 3; fi",
+            "sh", helpManPage]
+        onExited: if (exitCode === 3) webSearch(helpQuery);
+    }
+
+    // Hand a web query to the user's browser, so the search runs on the default engine they
+    // already configured. Firefox-family browsers have `--search`; Chromium-family treats a
+    // plain string as a search too; xdg-open is the last resort. A URL opens as-is.
+    // (Settings · webSearchEngine still wins when the user set an engine explicitly.)
+    readonly property string browserScript: [
+        "q=\"$1\"",
+        "case \"$q\" in *'://'*|'www.'*) exec xdg-open \"$q\";; esac",
+        "b=$(xdg-settings get default-web-browser 2>/dev/null | sed 's/\\.desktop$//')",
+        "for d in \"$HOME/.local/share/applications/$b.desktop\" \"${XDG_DATA_HOME:-$HOME/.local/share}/applications/$b.desktop\" /usr/share/applications/$b.desktop /usr/local/share/applications/$b.desktop; do",
+        "  [ -r \"$d\" ] || continue",
+        "  c=$(sed -n 's/^Exec=//p' \"$d\" | head -n1 | sed 's/%[a-zA-Z]//g' | awk '{print $1}')",
+        "  c=${c##*/}",
+        "  command -v \"$c\" >/dev/null 2>&1 || continue",
+        "  case \"$c\" in *firefox*|*zen*|*librewolf*|*waterfox*|*floorp*) exec \"$c\" --search \"$q\";; esac",
+        "  exec \"$c\" \"$q\"",
+        "done",
+        "for c in firefox zen-browser zen librewolf waterfox floorp chromium chromium-browser google-chrome chrome vivaldi brave; do",
+        "  command -v \"$c\" >/dev/null 2>&1 || continue",
+        "  case \"$c\" in *firefox*|*zen*|*librewolf*|*waterfox*|*floorp*) exec \"$c\" --search \"$q\";; esac",
+        "  exec \"$c\" \"$q\"",
+        "done",
+        "exec xdg-open \"$q\" 2>/dev/null || true"
+    ].join("\n")
+
+    function webSearch(q) {
+        if ((webSearchEngine || "").indexOf("http") === 0 && webSearchEngine !== "https://duckduckgo.com/?q=")
+            return Quickshell.execDetached(["xdg-open", webSearchEngine + encodeURIComponent(q)]);
+        Quickshell.execDetached(["sh", "-c", browserScript, "sh", q]);
     }
     function emoji() {
         sh("for c in emote bemoji smile rofimoji wofi-emoji; do command -v $c >/dev/null 2>&1 && exec $c; done");
@@ -2365,7 +2417,7 @@ Scope {
         else { var expr=s.replace(/^=\s*/,""); var v=calcValue(expr); if(v!==null && (s.charAt(0)==="=" || /[+*/%xX×÷()]/.test(s))) out.unshift({title:String(Number(v.toPrecision(10))),sub:"Calculator · Return to copy",glyph:"search",run:function(){Quickshell.execDetached(["wl-copy",String(v)]);}}); }
         var wins=windowItems(q); for(var j=0;j<wins.length&&out.length<6;j++)out.push(wins[j]);
         var acts=actionItems(q); for(var k=0;k<acts.length&&out.length<6;k++)if(acts[k].title.toLowerCase().indexOf(s)===0)out.push(acts[k]);
-        if(s.length>0 && out.length<7) out.push({title:"Search the web for “"+q.trim()+"”",sub:"Web Search · Return to open",glyph:"search",run:function(){Quickshell.execDetached(["xdg-open",root.webSearchEngine+encodeURIComponent(q.trim())]);}});
+        if(s.length>0 && out.length<7) out.push({title:"Search the web for “"+q.trim()+"”",sub:"Web Search · Return to open",glyph:"search",run:function(){root.webSearch(q.trim());}});
         return out.slice(0,8);
     }
 
@@ -2374,8 +2426,8 @@ Scope {
         if (name === "apple") {
             m.push(mi("About This Linux", "", function () { root.aboutLinux(); }));
             m.push(msep());
-            m.push(mi("System Settings\u2026", "", function () { sh("hyprmod"); }));
-            m.push(mi("Bar Settings\u2026", "", function () { root.openSettings(); }));
+            m.push(mi("System Settings\u2026", "", function () { root.openSettings("general"); }));
+            m.push(mi("Bar Settings\u2026", "", function () { root.openSettings("menubar"); }));
             m.push(msep());
             m.push(mi("Lock Screen", "", function () { sh("~/.config/quickshell/MacLock/lock-via-ipc.sh"); }));
             m.push(mi("Sleep", "", function () { sh("systemctl suspend"); }));
@@ -2514,7 +2566,7 @@ Scope {
                 m.push(mi("Search\u2026", "", function () { root.search(); }));
                 if (has) m.push(mi(n + " Help", "", function () { root.helpFor(id, n); }));
                 m.push(msep());
-                m.push(mi("Hyprland Keybinds", "", function () { sh(terminal + " -e sh -c 'hyprctl binds | less'"); }));
+                m.push(mi("Hyprland Keybinds", "", function () { kbWin.open(); }));
                 m.push(mi("Reload Hyprland Config", "", function () { Quickshell.execDetached(["hyprctl", "reload"]); }));
                 m.push(msep());
                 m.push(mi("Hyprland Wiki", "", function () { Quickshell.execDetached(["xdg-open", "https://wiki.hypr.land"]); }));
