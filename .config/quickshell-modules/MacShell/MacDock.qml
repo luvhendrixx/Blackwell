@@ -23,6 +23,7 @@
 import QtQuick
 import QtQuick.Effects
 import QtQuick.Controls
+import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -489,6 +490,15 @@ Scope {
                 Rectangle { x: 1.5; y: 11.2; width: 3; height: 3; radius: 1.5; color: "white" }
                 Rectangle { x: 6.3; y: 11.7; width: 5.6; height: 2; radius: 1; color: "white" }
             }
+            // profile (person bust)
+            Item {
+                visible: gl.kind === "profile"; anchors.fill: parent
+                Rectangle { x: 5.2; y: 1.5; width: 5.6; height: 5.6; radius: 2.8; color: "white" }
+                Item {   // shoulders, clipped flat at the bottom
+                    x: 2; y: 7.1; width: 12; height: 8.9; clip: true
+                    Rectangle { x: 0; y: 0; width: 12; height: 12; radius: 6; color: "white" }
+                }
+            }
             // about
             Item {
                 visible: gl.kind === "about"; anchors.fill: parent
@@ -528,6 +538,8 @@ Scope {
         readonly property var panes: [
             { id: "general",    name: "General",      glyph: "behavior",   c1: "#8E8E93", c2: "#636366",
               keys: "enable disable dock menu bar panel show hide off on" },
+            { id: "profile",    name: "User",         glyph: "profile",    c1: "#8E8E93", c2: "#636366",
+              keys: "user profile avatar picture face account name username lock screen change reset image" },
             { id: "dock",       name: "Dock",         glyph: "dock",       c1: "#4FA8FF", c2: "#0A6CFF",
               keys: "size icon magnification zoom spacing margin distance edge" },
             { id: "menubar",    name: "Menu Bar",     glyph: "menubar",    c1: "#7D7AFF", c2: "#4B48D6",
@@ -908,7 +920,7 @@ Scope {
                     x: 22
                     y: 6
                     width: flick.width - 44
-                    sourceComponent: [paneGeneral, paneDock, paneMenuBar, paneAppearance, paneBehavior, paneApps, paneWidgets, paneReminders, paneAbout][prefsWindow.cur]
+                    sourceComponent: [paneGeneral, paneProfile, paneDock, paneMenuBar, paneAppearance, paneBehavior, paneApps, paneWidgets, paneReminders, paneAbout][prefsWindow.cur]
                     onLoaded: fadeIn.restart()
                 }
             }
@@ -956,6 +968,495 @@ Scope {
                 SLabel {
                     t: pal
                     text: "If you turn both off, reopen this window with:  qs -c macbar ipc call settings open"
+                }
+            }
+        }
+
+        // ── User (profile / lock-screen avatar) ──
+        Component {
+            id: paneProfile
+            Column {
+                id: pane
+                spacing: 10
+
+                property string home: Quickshell.env("HOME")
+                readonly property string facePath: home + "/.face"
+                property bool hasFace: false
+                property string userName: Quickshell.env("USER") || "user"
+                property int bump: 0
+
+                property string pickedSource: ""        // file url of the picture being cropped
+                property real zoom: 1
+                property real panX: 0
+                property real panY: 0
+                property real baseScale: 0              // cover-fit scale at zoom 1 (most zoomed-out)
+                property string statusText: ""
+
+                readonly property int vsize: 204        // crop circle diameter on screen
+                readonly property int outSize: 512      // saved avatar resolution
+                // scale used only on the off-screen save stage (native-res 512² copy)
+                readonly property real saveScale: pane.imgW > 0
+                    ? Math.max(pane.outSize / pane.imgW, pane.outSize / pane.imgH) : 1
+
+                // ── built-in library browser (replaces the portal file dialog) ──
+                property bool browsing: false
+                // single dedicated folder, like ~/Pictures/Wallpapers is for wallpapers:
+                // drop (or copy) candidate avatar pictures here and the picker serves
+                // from this directory only.
+                readonly property string libraryDir: home + "/Pictures/Profiles"
+
+                // ── aspect probe: this quickshell build doesn't expose
+                // Image.naturalWidth to QML (reads come back undefined), so load one
+                // downscaled copy and use its decoded pixel size for cover-fit math.
+                // Setting only ONE sourceSize dimension keeps the natural aspect exact.
+                Item {
+                    width: 0; height: 0
+                    Image {
+                        id: cropAspect
+                        visible: false
+                        source: pane.pickedSource
+                        asynchronous: true
+                        sourceSize.width: 1024
+                        onStatusChanged: {
+                            if (cropAspect.status === Image.Ready) {
+                                pane.refit();
+                                pane.clampPan();
+                            }
+                        }
+                    }
+                }
+
+                readonly property real imgW: cropAspect.width
+                readonly property real imgH: cropAspect.height
+
+                function setZoom(z) {
+                    zoom = Math.max(1, Math.min(3, z));
+                    clampPan();
+                }
+                // the image must keep covering the circle
+                function clampPan() {
+                    if (pane.imgW <= 0 || baseScale <= 0) return;
+                    var dw = pane.imgW * baseScale * zoom;
+                    var dh = pane.imgH * baseScale * zoom;
+                    var limX = Math.max(0, (dw - pane.vsize) / 2);
+                    var limY = Math.max(0, (dh - pane.vsize) / 2);
+                    panX = Math.max(-limX, Math.min(limX, panX));
+                    panY = Math.max(-limY, Math.min(limY, panY));
+                }
+                // cover-fit scale for the CURRENT view size (recomputes when the view
+                // briefly becomes 512² so the saved square is the native-res crop)
+                function refit() {
+                    if (pane.imgW > 0)
+                        baseScale = Math.max(pane.vsize / pane.imgW, pane.vsize / pane.imgH);
+                }
+                function setPicked(url) {
+                    pickedSource = url;
+                    zoom = 1; panX = 0; panY = 0; baseScale = 0;
+                    statusText = "";
+                }
+                function saveAvatar() {
+                    if (pickedSource === "" || pane.imgW <= 0) return;
+                    statusText = "Saving…";
+                    // framing of the 512² save square in probe-pixel space
+                    var w = pane.imgW * pane.saveScale * pane.zoom;
+                    var h = pane.imgH * pane.saveScale * pane.zoom;
+                    var ix = (pane.outSize - w) / 2 + pane.panX * (pane.outSize / pane.vsize);
+                    var iy = (pane.outSize - h) / 2 + pane.panY * (pane.outSize / pane.vsize);
+                    var u0 = (0 - ix) / w;
+                    var v0 = (0 - iy) / h;
+                    var u1 = (pane.outSize - ix) / w;
+                    var v1 = (pane.outSize - iy) / h;
+                    var src = pane.pickedSource.toString().replace(/^file:\/\//, "");
+                    try { src = decodeURIComponent(src); } catch (err) { }
+                    // native-res circular avatar straight out of the source file —
+                    // Pillow does the crop/resize/circle; no screen capture, nothing
+                    // flickers, and the Save button never has to move.
+                    saveProcess.command = ["python3", "-c", pane.savePy, src,
+                        String(u0), String(v0), String(u1), String(v1), pane.facePath];
+                    saveProcess.running = true;
+                }
+                Process {
+                    id: saveProcess
+                    onExited: {
+                        if (exitCode === 0) {
+                            pane.hasFace = true;
+                            pane.bump++;
+                            syncProcess.running = true;
+                            pane.statusText = "Saved — it's live on the lock screen already.";
+                        } else {
+                            pane.statusText = "Couldn't save the picture";
+                        }
+                    }
+                }
+
+                // native-res circular avatar generator (Pillow): crops the framed
+                // native square, resizes to 512², and punches a circular alpha mask.
+                readonly property string savePy:
+                    "import sys\n"
+                  + "from PIL import Image, ImageDraw\n"
+                  + "src, out = sys.argv[1], sys.argv[-1]\n"
+                  + "u0, v0, u1, v1 = map(float, sys.argv[2:6])\n"
+                  + "im = Image.open(src).convert('RGBA')\n"
+                  + "W, H = im.size\n"
+                  + "box = (round(u0*W), round(v0*H), round(u1*W), round(v1*H))\n"
+                  + "r = im.crop(box)\n"
+                  + "w, h = r.size\n"
+                  + "s = min(w, h)\n"
+                  + "if w > s: r = r.crop(((w-s)//2, 0, (w-s)//2+s, h))\n"
+                  + "elif h > s: r = r.crop((0, (h-s)//2, w, (h-s)//2+s))\n"
+                  + "r = r.resize((512, 512), Image.LANCZOS)\n"
+                  + "m = Image.new('L', (512, 512), 0)\n"
+                  + "dr = ImageDraw.Draw(m)\n"
+                  + "dr.ellipse((0, 0, 511, 511), fill=255)\n"
+                  + "r.putalpha(m)\n"
+                  + "r.save(out, 'PNG')\n"
+                  + "print('ok')"
+
+                // does ~/.face exist?
+                Process {
+                    id: faceProbe
+                    command: ["sh", "-c", "if [ -f \"$HOME/.face\" ]; then echo yes; else echo no; fi"]
+                    stdout: StdioCollector {
+                        onStreamFinished: pane.hasFace = (text.trim() === "yes")
+                    }
+                }
+                Component.onCompleted: faceProbe.running = true
+
+                // after a save: best-effort mirror for tools that look elsewhere
+                Process {
+                    id: syncProcess
+                    command: ["sh", "-c",
+                        "cp -f \"$HOME/.face\" \"$HOME/.face.icon\" 2>/dev/null; " +
+                        "if [ -w /var/lib/AccountsService/icons ]; then " +
+                        "cp -f \"$HOME/.face\" \"/var/lib/AccountsService/icons/$USER\" 2>/dev/null; fi"]
+                }
+                Process {
+                    id: resetProcess
+                    command: ["sh", "-c",
+                        "rm -f \"$HOME/.face\" \"$HOME/.face.icon\"; " +
+                        "if [ -w /var/lib/AccountsService/icons ]; then " +
+                        "rm -f \"/var/lib/AccountsService/icons/$USER\"; fi"]
+                    onExited: {
+                        pane.hasFace = false;
+                        pane.bump++;
+                        pane.statusText = "Avatar removed — the lock screen falls back to your initial.";
+                    }
+                }
+
+                readonly property string previewUrl: hasFace ? "file://" + facePath + "?r=" + bump : ""
+
+                SLabel { t: pal; header: true; text: "User" }
+
+                SCard {
+                    t: pal
+                    Item {
+                        width: parent.width
+                        height: 96
+                        // current avatar preview
+                        Item {
+                            x: 14
+                            width: 60; height: 60
+                            anchors.verticalCenter: parent.verticalCenter
+                            Rectangle {
+                                id: curBg
+                                anchors.fill: parent; radius: width / 2
+                                color: pal.ctrl
+                                border.width: 1; border.color: pal.cardBorder
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: curImg.status !== Image.Ready
+                                    text: pane.userName.charAt(0).toUpperCase()
+                                    color: pal.text2
+                                    font.family: pal.fam; font.pixelSize: 24; font.weight: Font.Medium
+                                }
+                                Image {
+                                    id: curImg
+                                    anchors.fill: parent
+                                    anchors.margins: 1
+                                    source: pane.previewUrl
+                                    fillMode: Image.PreserveAspectCrop
+                                    smooth: true; mipmap: true; asynchronous: true
+                                }
+                                layer.enabled: true
+                                layer.smooth: true
+                                layer.effect: MultiEffect {
+                                    maskEnabled: true
+                                    maskSource: curMask
+                                    maskThresholdMin: 0.5
+                                    maskSpreadAtMin: 1.0
+                                }
+                                Item {
+                                    id: curMask
+                                    anchors.fill: parent
+                                    visible: false
+                                    layer.enabled: true
+                                    layer.smooth: true
+                                    Rectangle { anchors.fill: parent; radius: width / 2; color: "black" }
+                                }
+                            }
+                        }
+                        Column {
+                            x: 86
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 7
+                            Row {
+                                spacing: 8
+                                Text {
+                                    text: pane.userName
+                                    color: pal.text
+                                    font.family: pal.fam; font.pixelSize: 14; font.weight: Font.DemiBold
+                                }
+                                Text {
+                                    text: "· lock screen avatar"
+                                    color: pal.text2
+                                    font.family: pal.fam; font.pixelSize: 12
+                                }
+                            }
+                            Text {
+                                visible: pane.statusText !== ""
+                                text: pane.statusText
+                                color: pal.text2
+                                font.family: pal.fam; font.pixelSize: 12
+                                width: paneLoader.width - 130
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+                        Row {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+                            SButton {
+                                t: pal
+                                text: pane.browsing ? "Close Library" : "Choose Image…"
+                                onClicked: pane.browsing = !pane.browsing
+                            }
+                            SButton {
+                                t: pal
+                                text: "Reset"
+                                destructive: true
+                                visible: pane.hasFace
+                                onClicked: resetProcess.running = true
+                            }
+                        }
+                    }
+                }
+
+                SLabel {
+                    t: pal
+                    visible: pane.pickedSource !== ""
+                    text: "Position & size — drag inside the circle, roll the mouse wheel or use the slider to zoom"
+                }
+
+                SCard {
+                    t: pal
+                    visible: pane.pickedSource !== ""
+                    Item {
+                        width: parent.width
+                        height: pane.vsize + 28
+                        // crop circle: what you see is exactly what gets saved
+                        Item {
+                            id: cropViewport
+                            x: 20
+                            y: 20
+                            width: pane.vsize; height: pane.vsize
+                            Image {
+                                id: cropImg
+                                source: pane.pickedSource
+                                x: (parent.width - width) / 2 + pane.panX
+                                y: (parent.height - height) / 2 + pane.panY
+                                width: pane.imgW * pane.baseScale * pane.zoom
+                                height: pane.imgH * pane.baseScale * pane.zoom
+                                fillMode: Image.Stretch
+                                smooth: true; mipmap: true
+                                asynchronous: false
+                                onStatusChanged: {
+                                    if (cropImg.status === Image.Ready) {
+                                        pane.refit();
+                                        pane.clampPan();
+                                    }
+                                }
+                            }
+                            layer.enabled: true
+                            layer.smooth: true
+                            layer.effect: MultiEffect {
+                                maskEnabled: true
+                                maskSource: cropMask
+                                maskThresholdMin: 0.5
+                                maskSpreadAtMin: 1.0
+                            }
+                            Item {
+                                id: cropMask
+                                anchors.fill: parent
+                                visible: false
+                                layer.enabled: true
+                                layer.smooth: true
+                                Rectangle { anchors.fill: parent; radius: width / 2; color: "black" }
+                            }
+                            Rectangle {
+                                anchors.fill: parent; radius: width / 2
+                                color: "transparent"
+                                border.width: 1; border.color: pal.cardBorder
+                            }
+                            MouseArea {
+                                id: cropDrag
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.OpenHandCursor
+                                acceptedButtons: Qt.LeftButton
+                                property real lastX: 0
+                                property real lastY: 0
+                                onPressed: (mouse) => {
+                                    lastX = mouse.x; lastY = mouse.y;
+                                    cursorShape = Qt.ClosedHandCursor;
+                                }
+                                onReleased: cursorShape = Qt.OpenHandCursor
+                                onPositionChanged: (mouse) => {
+                                    if (!pressed) return;
+                                    pane.panX += mouse.x - lastX;
+                                    pane.panY += mouse.y - lastY;
+                                    lastX = mouse.x; lastY = mouse.y;
+                                    pane.clampPan();
+                                }
+                                onWheel: (wheel) => {
+                                    pane.setZoom(pane.zoom * (wheel.angleDelta.y > 0 ? 1.08 : 1 / 1.08));
+                                    wheel.accepted = true;
+                                }
+                            }
+                        }
+                        Column {
+                            x: cropViewport.width + cropViewport.x + 20
+                            anchors.top: cropViewport.top
+                            width: parent.width - x - 20
+                            spacing: 12
+                            SSlider {
+                                t: pal
+                                width: Math.min(260, parent.width - 8)
+                                from: 1; to: 3; stepSize: 0.01
+                                value: pane.zoom
+                                onMoved: value => { pane.zoom = value; pane.clampPan(); }
+                            }
+                            Text {
+                                text: "Drag to position · zoom 1–3×"
+                                color: pal.text2
+                                font.family: pal.fam; font.pixelSize: 12
+                            }
+                            Row {
+                                spacing: 8
+                                SButton { t: pal; text: "Save Avatar"; onClicked: pane.saveAvatar() }
+                                SButton { t: pal; text: "Discard"; onClicked: pane.setPicked("") }
+                            }
+                        }
+                    }
+                }
+
+                SLabel {
+                    t: pal
+                    text: "The picture shows above your name on the lock screen. Saved to ~/.face and mirrored to " +
+                          "~/.face.icon / AccountsService when possible. Static images only — GIFs aren't supported."
+                }
+
+                // ── Library: browse pictures inside this window — no portal, no file manager.
+                // FolderListModel gives us fileName / filePath (url) / fileIsDir per entry.
+                FolderListModel {
+                    id: libraryModel
+                    folder: "file://" + pane.libraryDir
+                    nameFilters: ["*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp", "*.avif"]
+                    showDirs: false
+                    showDotAndDotDot: false
+                    caseSensitive: false
+                }
+
+                SCard {
+                    t: pal
+                    visible: pane.browsing
+                    Item {
+                        width: parent.width
+                        height: 348
+
+                        Column {
+                            x: 14; y: 12
+                            width: parent.width - 28
+                            spacing: 4
+                            Text {
+                                text: "Library — " + pane.libraryDir.replace(pane.home, "~")
+                                color: pal.text
+                                font.family: pal.fam; font.pixelSize: 13; font.weight: Font.DemiBold
+                            }
+                            Text {
+                                text: "Drop (or copy) the pictures you want to use into this folder — they show up here instantly."
+                                color: pal.text2
+                                font.family: pal.fam; font.pixelSize: 11
+                                wrapMode: Text.WordWrap
+                                width: parent.width
+                            }
+                        }
+
+                        GridView {
+                            id: grid
+                            x: 14; y: 74
+                            width: parent.width - 28
+                            height: parent.height - 74 - 24
+                            clip: true
+                            cellWidth: 84
+                            cellHeight: 84
+                            model: libraryModel
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            delegate: Item {
+                                width: grid.cellWidth; height: grid.cellHeight
+                                required property url filePath
+                                required property string fileName
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    Item {
+                                        width: 62; height: 60
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        // image thumbnail
+                                        Image {
+                                            anchors.centerIn: parent
+                                            width: 60; height: 60
+                                            source: filePath
+                                            fillMode: Image.PreserveAspectCrop
+                                            smooth: true; mipmap: true
+                                            asynchronous: true
+                                            sourceSize.width: 128
+                                            sourceSize.height: 128
+                                            cache: false
+                                        }
+                                    }
+                                    Text {
+                                        text: fileName
+                                        color: pal.text
+                                        font.family: pal.fam; font.pixelSize: 11
+                                        elide: Text.ElideMiddle
+                                        width: 78
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.OpenHandCursor
+                                    onClicked: {
+                                        pane.setPicked(filePath.toString());
+                                        pane.browsing = false;
+                                    }
+                                }
+                            }
+                        }
+                        // friendly empty state — the folder ships empty
+                        Text {
+                            visible: grid.count === 0
+                            anchors.centerIn: parent
+                            text: "Nothing here yet —\ndrop images into " + pane.libraryDir.replace(pane.home, "~")
+                            color: pal.text2
+                            font.family: pal.fam; font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
                 }
             }
         }
