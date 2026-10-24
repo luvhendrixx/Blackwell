@@ -15,7 +15,6 @@ cliphist
 cmake
 cmatrix
 dmidecode
-dolphin
 dunst
 efibootmgr
 eza
@@ -24,13 +23,11 @@ fd
 ffmpegthumbnailer
 flatpak
 gammastep
-ghostty
 git
 gnome-disk-utility
 gnome-themes-extra
 grim
 gst-plugin-pipewire
-htop
 hyprland
 hyprlauncher
 hyprpolkitagent
@@ -109,10 +106,8 @@ vpl-gpu-rt
 vulkan-intel
 vulkan-nouveau
 vulkan-radeon
-waybar
 wget
 wireplumber
-wofi
 wpa_supplicant
 wtype
 xdg-desktop-portal-hyprland
@@ -128,7 +123,6 @@ zsh-autocomplete
 zsh-autosuggestions
 zsh-history-substring-search
 zsh-syntax-highlighting
-firefox
 gnome-keyring
 fwupd
 btrfs-assistant
@@ -152,3 +146,17 @@ qt6-multimedia
 pipewire-audio
 curl
 upower
+# Terminal
+kitty
+# Dev tools
+ripgrep
+gopls
+# Pacman / boot housekeeping
+pacman-contrib
+kernel-modules-hook
+# CLI tools
+croc
+github-cli
+tldr
+# Icon conversion (icns2png, for macOS app icons)
+libicns
