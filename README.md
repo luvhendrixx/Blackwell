@@ -55,7 +55,7 @@ From there **Reboot** and you ought to be good to go.
 
 | Keys                                  | Action                                           |
 | ------------------------------------- | ------------------------------------------------ |
-| `SUPER + T` / `SUPER + Return/Enter`  | Terminal (Ghostty)                               |
+| `SUPER + T` / `SUPER + Return/Enter`  | Terminal (Kitty)                                 |
 | `SUPER + Q` / `SUPER + W`             | Close window                                     |
 | `SUPER + E` / `SUPER + SHIFT + F`     | Files (Nautilus)                                 |
 | `SUPER + B`                           | Browser (Firefox/Zen)                            |
