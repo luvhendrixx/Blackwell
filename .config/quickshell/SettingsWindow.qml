@@ -223,6 +223,7 @@ PanelWindow {
 
     property var navItems: [
         { name: "System", icon: "󰒓", page: "SystemPage" },
+        { name: "User", icon: "\uf007", page: "ProfilePage" },
         { name: "Audio", icon: "\uf028", page: "AudioPage" },
         { name: "Display", icon: "\uf108", page: "DisplayPage" },
         { name: "Network", icon: "\uf1eb", page: "NetworkPage" },
