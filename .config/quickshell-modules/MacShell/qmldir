@@ -12,3 +12,4 @@ WeatherIcon 1.0 WeatherIcon.qml
 MarqueeText 1.0 MarqueeText.qml
 WGlyph 1.0 WGlyph.qml
 Dissolve 1.0 Dissolve.qml
+KeybindsWindow 1.0 KeybindsWindow.qml
