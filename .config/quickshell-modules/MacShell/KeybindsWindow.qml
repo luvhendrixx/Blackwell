@@ -31,43 +31,173 @@ PanelWindow {
         query = "";
         showing = true;
         kbBindProbe.running = true;          // fresh every open: binds may have changed
+        kbLuaProbe.running = true;           // keybinds.lua supplies the human labels
         searchInput.forceActiveFocus();
     }
     function close() { showing = false; }
 
     // ───────────────────────── data ─────────────────────────
-    property var raw: []                     // everything hyprctl gave us
+
+    // Hyprland's lua config (hyprland.lua) registers binds with the internal
+    // dispatcher "__lua" and a callback id as arg — hyprctl tells us nothing
+    // human for them (has_description false). keybinds.lua is the actual source:
+    // every line is `hl.bind(MODS .. " + KEY", hl.dsp.…(...))` usually ending
+    // with a `-- what it does` comment. Parse it and join on (mods, key).
+    property var luaMap: ({})
+    property var raw: []                     // final display list (hyprctl binds joined with keybinds.lua)
+
+    Process {
+        id: kbLuaProbe
+        // hyprland.lua first: it defines the globals (mainMod, terminal…) used
+        // by keybinds.lua's combos
+        command: ["sh", "-c", "cat \"$HOME/.config/hypr/hyprland.lua\" \"$HOME/.config/hypr/keybinds.lua\" 2>/dev/null"]
+        stdout: StdioCollector {
+            onStreamFinished: { root.luaMap = root.parseLuaMap(text); root.commit(); }
+        }
+    }
+
+    property var parsedEntries: []
 
     Process {
         id: kbBindProbe
         command: ["hyprctl", "binds", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
-                var out = [];
-                try {
-                    var list = JSON.parse(text);
-                    for (var i = 0; i < list.length; i++) {
-                        var b = list[i];
-                        if (!b || !b.key) continue;
-                        out.push({
-                            submap: String(b.submap || "").trim(),
-                            key: String(b.key || "").trim(),
-                            mask: b.modmask || 0,
-                            mods: modText(b.modmask || 0),
-                            desc: String(b.description || "").trim(),
-                            disp: String(b.dispatcher || "").trim(),
-                            arg: String(b.arg || "").trim()
-                        });
-                    }
-                } catch (e) { }
-                out.sort(function (x, y) {
-                    if (x.submap !== y.submap) return x.submap < y.submap ? -1 : 1;
-                    if (x.mask !== y.mask) return x.mask - y.mask;
-                    return x.key.localeCompare(y.key);
-                });
-                root.raw = out;
+                root.parsedEntries = root.parseBindsJson(text);
+                root.commit();
             }
         }
+    }
+
+    // whatever finished second wins, so both orders work and it's idempotent
+    function commit() {
+        var out = [];
+        var ent = parsedEntries || [];
+        for (var i = 0; i < ent.length; i++) {
+            var b = ent[i];
+            var hit = luaMap[canonMask(b.mask) + "\u0000" + b.key.toUpperCase()];
+            if (hit !== undefined) {
+                if (hit.desc !== "") b.desc = hit.desc;
+                b.disp = hit.handler;          // replaces the "__lua" dispatcher for search
+            }
+            out.push(b);
+        }
+        out.sort(function (x, y) {
+            if (x.submap !== y.submap) return x.submap < y.submap ? -1 : 1;
+            if (x.mask !== y.mask) return x.mask - y.mask;
+            return x.key.localeCompare(y.key);
+        });
+        raw = out;
+    }
+
+    function parseBindsJson(text) {
+        var out = [];
+        try {
+            var list = JSON.parse(text);
+            for (var i = 0; i < list.length; i++) {
+                var b = list[i];
+                if (!b || !b.key) continue;
+                var disp = String(b.dispatcher || "").trim();
+                out.push({
+                    submap: String(b.submap || "").trim(),
+                    key: String(b.key || "").trim(),
+                    mask: b.modmask || 0,
+                    mods: modText(b.modmask || 0),
+                    desc: String(b.description || "").trim(),
+                    disp: disp,
+                    arg: String(b.arg || "").trim()
+                });
+            }
+        } catch (e) { }
+        return out;
+    }
+
+    // map key: canonical mods joined with "+" then \u0000 then the KEY in caps
+    function parseLuaMap(text) {
+        var map = {};
+        var vars = {};
+        var lines = String(text).split("\n");
+        for (var i = 0; i < lines.length; i++) {
+            var L = lines[i];
+            // collect `name = "value"` (local or global — mainMod lives in hyprland.lua)
+            var vm = /^(?:local\s+)?([A-Za-z_]\w*)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/.exec(L);
+            if (vm) { vars[vm[1]] = vm[2].slice(1, -1); continue; }
+            var bs = L.indexOf("hl.bind(");
+            if (bs < 0) continue;
+            bs += 8;
+            // combo end: first top-level comma (skipping quotes, (), {}, [])
+            var depth = 1, inSq = false, inDq = false, esc = false, j;
+            for (j = bs; j < L.length; j++) {
+                var ch = L.charAt(j);
+                if (esc) { esc = false; continue; }
+                if (ch === "\\") { esc = true; continue; }
+                if (inDq) { if (ch === '"') inDq = false; continue; }
+                if (inSq) { if (ch === "'") inSq = false; continue; }
+                if (ch === '"') inDq = true;
+                else if (ch === "'") inSq = true;
+                else if (ch === "(" || ch === "{" || ch === "[") depth++;
+                else if (ch === ")" || ch === "}" || ch === "]") { depth--; if (depth === 0) break; }
+                else if (ch === "," && depth === 1) break;
+            }
+            var combo = resolveExpr(L.slice(bs, j), vars);
+            // handler end: the token that closes hl.bind itself
+            var depth2 = 1, inSq2 = false, inDq2 = false, esc2 = false, k;
+            for (k = j + 1; k < L.length; k++) {
+                var c2 = L.charAt(k);
+                if (esc2) { esc2 = false; continue; }
+                if (c2 === "\\") { esc2 = true; continue; }
+                if (inDq2) { if (c2 === '"') inDq2 = false; continue; }
+                if (inSq2) { if (c2 === "'") inSq2 = false; continue; }
+                if (c2 === '"') inDq2 = true;
+                else if (c2 === "'") inSq2 = true;
+                else if (c2 === "(" || c2 === "{" || c2 === "[") depth2++;
+                else if (c2 === ")" || c2 === "}" || c2 === "]") { depth2--; if (depth2 === 0) break; }
+            }
+            var handler = L.slice(j + 1, k).trim().replace(/hl\.dsp\./g, "").replace(/hl\./g, "");
+            var cm = L.slice(k + 1).match(/--\s*(.*)$/);
+            var comboParts = combo.split("+");
+            var keyPart = (comboParts[comboParts.length - 1] || "").trim();
+            var modsKey = canonList(comboParts.slice(0, comboParts.length - 1));
+            if (keyPart !== "")
+                map[modsKey + "\u0000" + keyPart.toUpperCase()] = { handler: handler, desc: cm ? cm[1].trim() : "" };
+        }
+        return map;
+    }
+
+    // `mainMod .. " + T"` → "SUPER + T": split on ".." , take string literals
+    // as literals, resolve identifiers through the local var table
+    function resolveExpr(expr, vars) {
+        var pieces = String(expr).split("..");
+        var acc = "";
+        for (var i = 0; i < pieces.length; i++) {
+            var p = pieces[i].trim();
+            if (p === "") continue;
+            if ((p.charAt(0) === '"' && p.charAt(p.length - 1) === '"') ||
+                (p.charAt(0) === "'" && p.charAt(p.length - 1) === "'")) {
+                acc += p.slice(1, -1);
+                continue;
+            }
+            acc += (vars[p] !== undefined ? vars[p] : p);
+        }
+        return acc;
+    }
+
+    // canonical mods string for lookup: same order + same names from both sources
+    function canonList(tokens) {
+        var want = ["CTRL", "SHIFT", "ALT", "SUPER"];
+        var have = {};
+        for (var i = 0; i < tokens.length; i++) {
+            var t = String(tokens[i]).trim().toUpperCase();
+            if (t === "LOGO" || t === "META" || t === "M" || t === "MAINMOD") t = "SUPER";
+            if (want.indexOf(t) >= 0) have[t] = true;
+        }
+        var out = [];
+        for (var j = 0; j < want.length; j++) if (have[want[j]]) out.push(want[j]);
+        return out.join("+");
+    }
+
+    function canonMask(m) {
+        return canonList([(m & 4) ? "CTRL" : "", (m & 1) ? "SHIFT" : "", (m & 8) ? "ALT" : "", (m & 64) ? "SUPER" : ""]);
     }
 
     // Hyprland modmask bits → readable names (super — the logo key — is the 64 bit)
@@ -83,7 +213,9 @@ PanelWindow {
 
     // what a row (and the search) treats as text
     function labelOf(b) {
-        return b.desc || ((b.disp + (b.arg ? "  " + b.arg : "")) || "(no action)");
+        if (b.desc) return b.desc;
+        if (b.disp === "__lua") return "(registered in hyprland.lua)";
+        return (b.disp + (b.arg ? "  " + b.arg : "")) || "(no action)";
     }
     function haystackOf(b) {
         return (labelOf(b) + " " + b.mods + " " + b.key + " " + b.disp + " " + b.arg + " " + b.submap).toLowerCase();
