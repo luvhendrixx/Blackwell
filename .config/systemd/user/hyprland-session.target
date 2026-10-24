@@ -1,0 +1,14 @@
+# Bridges Hyprland into the systemd user session graph.
+#
+# graphical-session.target refuses manual start (RefuseManualStart=yes), so the
+# compositor can't just `systemctl --user start` it. A wrapping unit can pull it
+# in as a dependency, though — that is exactly what this does.
+#
+# Without this, units gated on the graphical session (e.g. xdg-desktop-portal-gnome,
+# with its Requisite=graphical-session.target) silently fail with "dependency failed",
+# and file chooser dialogs fall back to whatever backend happens to tolerate it.
+#
+# Started from hyprland.lua's autostart block after the session environment is imported.
+[Unit]
+Description=Hyprland compositor user session
+Requires=graphical-session.target
