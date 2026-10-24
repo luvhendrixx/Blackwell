@@ -199,7 +199,11 @@ ShellRoot {
     }
 
     // ── one-shot lookups: real name, avatar, wifi, and other settings
+    // Runs again whenever the avatar picture changes (the FileView watchers right after
+    // this), so a custom avatar set from MacShell's settings is picked up live — the
+    // very next lock shows it, no logout or restart needed.
     Process {
+        id: userLookup
         running: true
         command: ["sh", "-c",
             "n=$(getent passwd \"$USER\" | cut -d: -f5 | cut -d, -f1); printf '%s\\n' \"${n:-$USER}\"; "
@@ -228,6 +232,31 @@ ShellRoot {
                 if (!root.preview) lockState.sound("lock");
             }
         }
+    }
+
+    // Re-run the one-shot lookups above. Restarting is cheap and this only happens on
+    // an avatar change, so the extra wifi/jq calls are irrelevant.
+    function refreshUserLookup() {
+        userLookup.running = false;
+        userLookup.running = true;
+    }
+
+    // Watch everywhere an avatar can live; MacShell's settings GUI writes ~/.face.
+    // Deleted files (avatar reset) fire onFileChanged too, so a removed picture is reflected as well.
+    FileView {
+        path: Quickshell.env("HOME") + "/.face"
+        watchChanges: true; printErrors: false
+        onFileChanged: refreshUserLookup()
+    }
+    FileView {
+        path: Quickshell.env("HOME") + "/.face.icon"
+        watchChanges: true; printErrors: false
+        onFileChanged: refreshUserLookup()
+    }
+    FileView {
+        path: "/var/lib/AccountsService/icons/" + (Quickshell.env("USER") || "unknown-user")
+        watchChanges: true; printErrors: false
+        onFileChanged: refreshUserLookup()
     }
 
     // ═════════════ the real lock ═════════════
