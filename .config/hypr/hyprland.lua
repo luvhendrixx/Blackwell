@@ -9,11 +9,17 @@ mainMod = "SUPER"
 terminal = "kitty"
 menu = "rofi -show drun"
 fileManager = "nautilus"
-browser = "firefox"
+browser = "zen-browser"
 
 ---- AUTOSTART ----
 
 hl.on("hyprland.start", function()
+	-- systemd: Hyprland never starts the user session graph itself
+	-- (graphical-session.target refuses manual start). Import the session
+	-- environment, then pull it in through the hyprland-session.target wrapper
+	-- — units gated on the graphical session (xdg-desktop-portal-gnome etc.)
+	-- depend on this. The wrapper lives in ~/.config/systemd/user/.
+	hl.exec_cmd("sh -c 'systemctl --user import-environment WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP; systemctl --user start hyprland-session.target'")
 	-- hl.exec_cmd("dunst") replaced with quickshell notifications
 	hl.exec_cmd("nm-applet")
 	hl.exec_cmd("wl-paste --type text --watch cliphist store")
@@ -25,6 +31,7 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd(home .. "/.config/hypr/scripts/wallpaper-init.sh")
 	hl.exec_cmd("qs")
 	hl.exec_cmd(home .. "/.config/hypr/scripts/powerprofile-auto.sh")
+	hl.exec_cmd("hypridle")    -- idle → MacLock (see hypridle.conf)
 end)
 
 ---- ENVIRONMENT VARIABLES ----
