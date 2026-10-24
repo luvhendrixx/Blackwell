@@ -63,10 +63,10 @@ Item {
         property string text: ""
         property real bl: 0
         readonly property real textW: crisp.implicitWidth
-        // exact distance from the layer's top to the glyph baseline (the box height alone
-        // can't reveal it, and descender space below the baseline is not part of the digits)
-        readonly property real baselineY: fm.ascent
-        TextMetrics { id: fm; font: mt.font }
+        // exact distance from the layer's top to the glyph baseline. This quickshell
+        // build returns undefined for TextMetrics ascent/descent/leading to QML, but a
+        // real Text item's baselineOffset reads back its natural baseline — so ask it.
+        readonly property real baselineY: crisp.baselineOffset
         implicitHeight: crisp.implicitHeight
         // as wide as the text itself (only clamped to the box when it elides), placed by the animated alignment —
         // never squeezed: a squeezed left-aligned Text overflows to the right (the clock drifted right and got cropped)
