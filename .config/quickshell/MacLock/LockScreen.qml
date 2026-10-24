@@ -672,7 +672,7 @@ Item {
                 id: loopLabel
                 visible: !ls.st.use24h
                 text: ls.st.now.getHours() < 12 ? "AM" : "PM"
-                color: Qt.rgba(1, 1, 1, 0.6)
+                color: Qt.rgba(1, 1, 1, 0.84)   // a touch brighter than before (0.6) so it reads at a glance, still quieter than the digits
                 anchors.left: timeTxt.right
                 anchors.leftMargin: Math.max(3, ls.clockPx * 0.04)
                 // put this text's baseline exactly on the time's baseline
