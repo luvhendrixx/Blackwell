@@ -675,9 +675,9 @@ Item {
                 color: Qt.rgba(1, 1, 1, 0.6)
                 anchors.left: timeTxt.right
                 anchors.leftMargin: Math.max(3, ls.clockPx * 0.04)
-                TextMetrics { id: labelFm; font: loopLabel.font }
                 // put this text's baseline exactly on the time's baseline
-                y: timeTxt.y + timeTxt.baselineY - labelFm.ascent
+                // (TextMetrics' ascent reads undefined here; Text.baselineOffset doesn't)
+                y: timeTxt.y + timeTxt.baselineY - loopLabel.baselineOffset
                 font.family: ls.fam; font.pixelSize: ls.clockPx * 0.15; font.weight: Font.DemiBold
                 font.letterSpacing: 2 * ls.u
                 layer.enabled: true
