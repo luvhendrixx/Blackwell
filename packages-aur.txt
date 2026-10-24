@@ -3,9 +3,15 @@
 # Without it both silently fall back to the default arrow.
 bibata-cursor-theme
 hyprmod
+
+# limine/boot stuff
 limine-mkinitcpio-hook-git
+limine-snapper-sync-git
+
+
+# pacman housekeeping
 paccache-hook
-papirus-folders
+
 python-hyprland-config
 python-hyprland-monitors
 python-hyprland-schema
@@ -15,7 +21,11 @@ typora
 visual-studio-code-bin
 yay
 auto-cpufreq
-limine-snapper-sync-git
 odin
 qview
 webapp-manager
+
+# Apps
+omasnap-bin
+spotify
+zen-browser-bin
