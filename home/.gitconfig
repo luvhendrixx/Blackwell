@@ -1,0 +1,55 @@
+[user]
+	email = 277160193+luvhendrixx@users.noreply.github.com
+	name = luvhendrixx
+
+[init]
+    defaultBranch = main          # only affects NEW repos
+
+[core]
+    editor = nvim
+    pager = delta
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true               # n / N to jump between diff sections
+    line-numbers = true
+
+[diff]
+    colorMoved = default          # highlights moved lines differently from added/removed
+
+[merge]
+    conflictStyle = zdiff3        # clearer conflict markers (git 2.35+)
+
+[pull]
+    rebase = false
+
+[push]
+    autoSetupRemote = true        # first `git push` creates the upstream for you
+
+[fetch]
+    prune = true                  # drops local refs to branches deleted on the remote
+
+[alias]
+    st = status -sb               # compact; matches the [!2?1] style in your prompt
+    br = branch                   # add -a to include remotes
+    co = checkout
+    sw = switch
+    sc = switch -c                # create a branch and switch
+    cm = commit -m
+    aa = add --all
+
+    lg = log --graph --oneline --decorate --all
+    last = log -1 HEAD --stat -p
+
+    discard = restore             # discard unstaged changes in a file
+    unstage = restore --staged    # safer than 'reset HEAD'
+
+# ── GitHub auth via gh (added by `gh auth setup-git`) ──
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
