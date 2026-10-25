@@ -111,6 +111,8 @@ Flags:
 
 -f, --fetch Dotfiles fetch only
 
+-F, --firmware Firmware (LVFS/fwupd) update check: refresh metadata, list updates, ask before installing
+
 -p, --pull Dotfiles pull only
 
 -y, --yay yay/AUR updates only
@@ -132,7 +134,26 @@ bw -u
 bw update
 
 bw -s
+
+bw -F
 ```
+
+### Firmware updates
+
+The setup also keeps an eye on firmware (BIOS/SSD/dock updates from LVFS) so
+it never silently rots behind your package upgrades:
+
+- a **pacman hook** (`95-fwupd-check.hook`, installed by `install.sh`) runs after
+  every `sudo pacman -Syu` / `bw -u` transaction, tells you right in the
+  terminal (and with a desktop notification) if firmware updates exist —
+  it **never installs anything**, it only reports;
+- `fwupd-refresh.timer` keeps LVFS metadata fresh in the background;
+- `bw -F` is the manual lever: refresh, show what's available, and only
+  install when you answer `y`. Firmware updates often want a reboot and a
+  decent battery, so the choice stays yours.
+
+Read-only by design: `sudo pacman -Syu && ...` stays a normal upgrade flow,
+whether or not there's a firmware update waiting.
 
 Other useful flags:
 

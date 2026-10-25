@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Blackwell — firmware availability check after a pacman/yay upgrade.
+# Prints into the transaction (what you see in the terminal when turning the
+# wheel) and, when a desktop session is reachable, drops a desktop
+# notification. Read-only for LVFS: installing stays a manual
+# `fwupdmgr update` (or `bw -F`) because firmware updates need intent and a
+# charge — never fire them from a package transaction.
+#
+# Metadata freshness is fwupd-refresh.timer's job; this only looks at what's
+# already fetched, so a pacman transaction is never held up by the network
+# for long (hard 30s ceiling).
+
+command -v fwupdmgr >/dev/null 2>&1 || exit 0
+
+out=$(timeout 30 fwupdmgr get-updates 2>/dev/null) || exit 0
+[ -n "$out" ] || exit 0
+
+# fwupd has several "nothing here" shapes depending on version; catch them all
+if printf '%s' "$out" | grep -qi 'no updatable\|no updates'; then
+  exit 0
+fi
+
+echo ":: Firmware updates are available! See them with: fwupdmgr get-updates (or run: bw -F)"
+
+# pacman hooks run as root; find the human's session instead of guessing $DISPLAY
+notify_user=$SUDO_USER
+if [ -z "$notify_user" ]; then
+  for s in $(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}'); do
+    sess_type=$(loginctl show-session "$s" -p Type --value 2>/dev/null)
+    sess_active=$(loginctl show-session "$s" -p Active --value 2>/dev/null)
+    if { [ "$sess_type" = "wayland" ] || [ "$sess_type" = "x11" ]; } && [ "$sess_active" = "yes" ]; then
+      notify_user=$(loginctl show-session "$s" -p Name --value 2>/dev/null)
+      [ -n "$notify_user" ] && break
+    fi
+  done
+fi
+[ -n "$notify_user" ] || exit 0
+notify_uid=$(id -u "$notify_user" 2>/dev/null) || exit 0
+[ "$notify_uid" != "0" ] || exit 0
+run_dir="/run/user/$notify_uid"
+
+sudo -u "$notify_user" env "XDG_RUNTIME_DIR=$run_dir" \
+  "DBUS_SESSION_BUS_ADDRESS=unix:path=$run_dir/bus" \
+  /usr/bin/notify-send -a blackwell -u normal \
+  "Firmware updates available" \
+  "Auto-shipped with your latest upgrade — open a terminal and run: fwupdmgr get-updates" >/dev/null 2>&1 || true
+
+exit 0

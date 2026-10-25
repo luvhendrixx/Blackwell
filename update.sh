@@ -5,6 +5,7 @@
 # Usage:
 #   bw -u|--update    full suite: yay + (fetch -> check -> pull) + symlink check
 #   bw -f|--fetch     dotfiles fetch only
+#   bw -F|--firmware  firmware (LVFS/fwupd): refresh, list, optional install
 #   bw -p|--pull      dotfiles pull only
 #   bw -y|--yay       yay/AUR updates only
 #   bw -s|--status    repo status (branch, ahead/behind, dirtiness)
@@ -42,6 +43,7 @@ Usage: bw {flag}
 Flags:
   -u, --update      Full update suite (yay + fetch + pull + symlink check)
   -f, --fetch       Dotfiles fetch only
+  -F, --firmware    Firmware update check (fwupd/LVFS): refresh + list, ask to install
   -p, --pull        Dotfiles pull only
   -y, --yay         yay/AUR updates only
   -s, --status      Show repo status (branch, ahead/behind, dirtiness)
@@ -53,6 +55,7 @@ Examples:
   bw -u          Run the full update suite
   bw update      Same as -u
   bw -s          Quick status
+  bw -F          Firmware updates (never auto-installs, always asks)
 EOF
 }
 
@@ -97,6 +100,44 @@ do_yay() {
     err "yay failed — check output above"
     return 1
   fi
+}
+
+# ─── firmware (fwupd / LVFS) ────────────────────────────────────────────────
+# Purely interactive and read-only until you say yes: refresh metadata, show
+# what's available, and only install when you explicitly ask. Complements the
+# 95-fwupd-check pacman hook, which already flags availability after upgrades.
+do_firmware() {
+  if ! command -v fwupdmgr >/dev/null 2>&1; then
+    warn "fwupd isn't installed — install it with: sudo pacman -S fwupd"
+    return 1
+  fi
+
+  log "Refreshing firmware metadata (fwupdmgr refresh)..."
+  fwupdmgr refresh --force >/dev/null 2>&1 || warn "metadata refresh failed — listing from cache instead"
+
+  local updates
+  updates=$(fwupdmgr get-updates 2>/dev/null || true)
+  if [[ -z $updates ]]; then
+    ok "Firmware is up to date"
+    return 0
+  fi
+
+  echo "$updates"
+  echo
+  printf "Install the firmware update(s) now? [y/N] "
+  local reply
+  read -r reply || reply=""
+  if [[ $reply =~ ^[Yy]$ ]]; then
+    if fwupdmgr update; then
+      ok "Firmware update done — reboot when it asks you to"
+    else
+      err "fwupdmgr update failed — run it manually to see the full error"
+      return 1
+    fi
+  else
+    log "Skipped — run again any time with: bw -F"
+  fi
+  return 0
 }
 
 # ─── dotfiles fetch ─────────────────────────────────────────────────────────
@@ -279,6 +320,9 @@ case "${1:-}" in
     ;;
   -f|--fetch)
     do_fetch || rc=1
+    ;;
+  -F|--firmware|firmware)
+    do_firmware || rc=1
     ;;
   -p|--pull)
     do_pull || rc=1
