@@ -242,6 +242,14 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
   run sudo systemctl enable --now pacman-orphans.timer 2>/dev/null
   run sudo systemctl enable --now fwupd-refresh.timer 2>/dev/null
 
+  # NetworkManager-wait-online is a synthetic boot dependency: nothing in this
+  # setup consumes it, but it serialises the userspace boot behind the network.
+  say "Trimming the network boot wait"
+  if systemctl cat NetworkManager-wait-online.service >/dev/null 2>&1; then
+    run sudo systemctl disable NetworkManager-wait-online.service 2>/dev/null ||
+      warn "couldn't disable NetworkManager-wait-online (fine — purely cosmetic)"
+  fi
+
   say "Setting cursor + icon defaults"
   run gsettings set org.gnome.desktop.interface cursor-theme 'Bibata-Modern-Ice'
   run gsettings set org.gnome.desktop.interface cursor-size 15

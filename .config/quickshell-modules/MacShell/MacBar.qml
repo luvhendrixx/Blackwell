@@ -261,11 +261,6 @@ Scope {
     readonly property int popRoom: 620
 
     function sh(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
-    // Debug: append a line to ~/.cache/macbar/actions.log so menu clicks can be traced after the fact.
-    function dlog(msg) {
-        var safe = String(msg).replace(/'/g, "'\\''");
-        sh("mkdir -p \"$HOME/.cache/macbar\"; printf '%s\\n' '" + safe + "' >> \"$HOME/.cache/macbar/actions.log\"");
-    }
     // Log out of Hyprland. 0.55+ (Lua) takes a Lua expression; UWSM sessions are stopped through uwsm so the session ends cleanly.
     function logOut() {
         sh('if command -v uwsm >/dev/null 2>&1 && uwsm check is-active >/dev/null 2>&1; then uwsm stop; '
@@ -1915,7 +1910,7 @@ Scope {
     function mc(label, run) { return { kind: "item", label: label, shortcut: "", run: run, confirm: true }; }
     function msep() { return { kind: "sep" }; }
     // Hyprland 0.55+ is configured and driven in Lua: `hyprctl dispatch` takes a Lua expression (the old "killactive" style strings fail).
-    function hlx(expr) { root.dlog("hlx: " + expr); Quickshell.execDetached(["hyprctl", "dispatch", expr]); }
+    function hlx(expr) { Quickshell.execDetached(["hyprctl", "dispatch", expr]); }
     function disp(expr) { return function () { root.hlx(expr); }; }
     // Menu shortcuts are sent to the focused window with Hyprland's sendshortcut (no extra tool needed).
     // The click that opened the menu may leave the bar's layer-surface with keyboard focus for a
@@ -1928,7 +1923,6 @@ Scope {
         return function () {
             var aw = root.activeWin;
             var wsel = (aw && aw.address) ? ', window = "address:' + aw.address + '"' : "";
-            root.dlog("sendshortcut mods='" + mods + "' key='" + k + "' target='" + wsel + "'");
             if (root.keysViaWtype) {
                 var a = ["wtype"], i;
                 for (i = 0; i < mods.length; i++) a.push("-M", mods[i]);
@@ -1964,7 +1958,6 @@ Scope {
     }
     function aboutLinux() {
         // run fastfetch in the user's terminal and let them read the output
-        root.dlog("aboutLinux cmd: " + terminal + " -e ...");
         sh(terminal + " -e sh -c 'fastfetch || neofetch; echo; read -p \"Press Enter\" _'");
     }
     function aboutActive(aw, n) {
@@ -2039,7 +2032,6 @@ Scope {
     }
     function launchActive() {
         var e = lookup(activeAppId);
-        root.dlog("launchActive app=" + activeAppId + " entry=" + (e ? e.id : "NULL"));
         if (e) e.execute();
         else sh(terminal);      // no matching .desktop: fall back to a terminal so the click still does something
     }
@@ -2535,7 +2527,6 @@ Scope {
                     // window.close() follows focus, and the bar may hold it during the click.
                     m.push(mi("Close Window", "", function () {
                         var aw = root.activeWin;
-                        root.dlog("closeWindow aw=" + (aw ? aw.address : "null"));
                         if (aw && aw.address) root.hlx('hl.dsp.window.close({ window = "address:' + aw.address + '" })');
                         else root.hlx("hl.dsp.window.close()");
                     }));
@@ -5638,7 +5629,6 @@ Scope {
                                     enabled: !it.isSep && !it.off
                                     hoverEnabled: true
                                     onClicked: {
-                                        root.dlog("menuClick pop=" + ui.pop + " item=" + (it.isSep ? "sep" : it.modelData.label) + " run=" + (!!it.modelData.run));
                                         if (it.modelData.confirm === true && ui.armed !== it.modelData.label) {
                                             ui.armed = it.modelData.label;
                                             return;
