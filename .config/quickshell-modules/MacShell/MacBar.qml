@@ -115,7 +115,7 @@ Scope {
     property bool showSearch: true
     property string webSearchEngine: ""   // optional web-search override: a "?q=" style base URL whose encoded query it appends; "" = hand the search straight to the browser, which uses its own default engine
     property bool weekStartsMonday: false
-    property string terminal: "ghostty"
+    property string terminal: "kitty"
     property string launcher: ""              // "" = built-in Spotlight; set a command (rofi, fuzzel, ...) to use an external launcher instead
     property string filesCmd: "xdg-open \"$HOME\""
     property string clipboardCmd: "cliphist list | (fuzzel --dmenu || wofi --dmenu || rofi -dmenu) | cliphist decode | wl-copy"
@@ -261,6 +261,11 @@ Scope {
     readonly property int popRoom: 620
 
     function sh(cmd) { Quickshell.execDetached(["sh", "-c", cmd]); }
+    // Debug: append a line to ~/.cache/macbar/actions.log so menu clicks can be traced after the fact.
+    function dlog(msg) {
+        var safe = String(msg).replace(/'/g, "'\\''");
+        sh("mkdir -p \"$HOME/.cache/macbar\"; printf '%s\\n' '" + safe + "' >> \"$HOME/.cache/macbar/actions.log\"");
+    }
     // Log out of Hyprland. 0.55+ (Lua) takes a Lua expression; UWSM sessions are stopped through uwsm so the session ends cleanly.
     function logOut() {
         sh('if command -v uwsm >/dev/null 2>&1 && uwsm check is-active >/dev/null 2>&1; then uwsm stop; '
@@ -1879,13 +1884,20 @@ Scope {
     function mc(label, run) { return { kind: "item", label: label, shortcut: "", run: run, confirm: true }; }
     function msep() { return { kind: "sep" }; }
     // Hyprland 0.55+ is configured and driven in Lua: `hyprctl dispatch` takes a Lua expression (the old "killactive" style strings fail).
-    function hlx(expr) { Quickshell.execDetached(["hyprctl", "dispatch", expr]); }
+    function hlx(expr) { root.dlog("hlx: " + expr); Quickshell.execDetached(["hyprctl", "dispatch", expr]); }
     function disp(expr) { return function () { root.hlx(expr); }; }
     // Menu shortcuts are sent to the focused window with Hyprland's sendshortcut (no extra tool needed).
+    // The click that opened the menu may leave the bar's layer-surface with keyboard focus for a
+    // moment, so we pass the window that was focused when the menu opened ("activeWin", refreshed
+    // by openPop) as sendshortcut's window target — the shortcut then lands on the right window
+    // regardless of who holds focus at click time.
     // If some app ignores them, set this to true to type them with wtype instead.
     readonly property bool keysViaWtype: false
     function keys(mods, k) {
         return function () {
+            var aw = root.activeWin;
+            var wsel = (aw && aw.address) ? ', window = "address:' + aw.address + '"' : "";
+            root.dlog("sendshortcut mods='" + mods + "' key='" + k + "' target='" + wsel + "'");
             if (root.keysViaWtype) {
                 var a = ["wtype"], i;
                 for (i = 0; i < mods.length; i++) a.push("-M", mods[i]);
@@ -1894,7 +1906,7 @@ Scope {
                 Quickshell.execDetached(a);
             } else {
                 var m = mods.map(function (x) { return x.toUpperCase(); }).join(" + ");
-                root.hlx('hl.dsp.send_shortcut({ mods = "' + m + '", key = "' + k + '" })');
+                root.hlx('hl.dsp.send_shortcut({ mods = "' + m + '", key = "' + k + '"' + wsel + ' })');
             }
         };
     }
@@ -1921,6 +1933,7 @@ Scope {
     }
     function aboutLinux() {
         // run fastfetch in the user's terminal and let them read the output
+        root.dlog("aboutLinux cmd: " + terminal + " -e ...");
         sh(terminal + " -e sh -c 'fastfetch || neofetch; echo; read -p \"Press Enter\" _'");
     }
     function aboutActive(aw, n) {
@@ -1995,7 +2008,9 @@ Scope {
     }
     function launchActive() {
         var e = lookup(activeAppId);
+        root.dlog("launchActive app=" + activeAppId + " entry=" + (e ? e.id : "NULL"));
         if (e) e.execute();
+        else sh(terminal);      // no matching .desktop: fall back to a terminal so the click still does something
     }
     function search() {
         spotWant = "home";
@@ -2485,7 +2500,14 @@ Scope {
                     m.push(msep());
                     if (browser || files || editor) m.push(mi("Close Tab", "Ctrl+W", keys(["ctrl"], "w")));
                     if (term) m.push(mi("Close Tab", "Ctrl+Shift+W", keys(["ctrl", "shift"], "w")));
-                    m.push(mi("Close Window", "", disp('hl.dsp.window.close()')));
+                    // Target the exact window that was focused when the menu opened; a bare
+                    // window.close() follows focus, and the bar may hold it during the click.
+                    m.push(mi("Close Window", "", function () {
+                        var aw = root.activeWin;
+                        root.dlog("closeWindow aw=" + (aw ? aw.address : "null"));
+                        if (aw && aw.address) root.hlx('hl.dsp.window.close({ window = "address:' + aw.address + '" })');
+                        else root.hlx("hl.dsp.window.close()");
+                    }));
                 }
                 m.push(msep());
                 if (aw) m.push(mi("Screenshot Window", "", function () { root.shotWindow(aw); }));
@@ -5583,6 +5605,7 @@ Scope {
                                     enabled: !it.isSep && !it.off
                                     hoverEnabled: true
                                     onClicked: {
+                                        root.dlog("menuClick pop=" + ui.pop + " item=" + (it.isSep ? "sep" : it.modelData.label) + " run=" + (!!it.modelData.run));
                                         if (it.modelData.confirm === true && ui.armed !== it.modelData.label) {
                                             ui.armed = it.modelData.label;
                                             return;
