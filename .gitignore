@@ -27,8 +27,8 @@ nohup.out
 .config/gtk-3.0/bookmarks
 
 # --- PERSONAL IDENTITY & SECRETS — NEVER version control ---
-.gitconfig
-home/.gitconfig    # your email/name + gh credential helper
+# (.gitconfig is tracked again: it now uses the GitHub noreply identity
+#  and contains no personal email or secrets / tokens)
 .env
 .env.*
 .env.local
