@@ -115,7 +115,7 @@ Scope {
     property bool showSearch: true
     property string webSearchEngine: ""   // optional web-search override: a "?q=" style base URL whose encoded query it appends; "" = hand the search straight to the browser, which uses its own default engine
     property bool weekStartsMonday: false
-    property string terminal: "kitty"
+    property string terminal: ""              // "" = auto-detect at startup (kitty → ghostty → …, see termProbe); pin a value here or in settings.json to force one
     property string launcher: ""              // "" = built-in Spotlight; set a command (rofi, fuzzel, ...) to use an external launcher instead
     property string filesCmd: "xdg-open \"$HOME\""
     property string clipboardCmd: "cliphist list | (fuzzel --dmenu || wofi --dmenu || rofi -dmenu) | cliphist decode | wl-copy"
@@ -1253,6 +1253,37 @@ Scope {
                 var o = null;
                 try { o = JSON.parse(text); } catch (err) { o = null; }
                 root.activeWin = (o && o.address) ? o : null;
+            }
+        }
+    }
+
+    // Terminal auto-detect. settings.json is machine-local and ships its own copy of `terminal`,
+    // so a template change (e.g. kitty replacing ghostty) can leave machines configured for a
+    // binary they don't have — the default-apps choice then silently no-ops on click.
+    // Resolution: honour the configured value while its binary exists; stale (or "") values
+    // fall through to the first installed candidate in termChain.
+    property string termChain: (terminal && terminal !== "")
+        ? JSON.stringify(terminal) + " kitty ghostty alacritty foot wezterm konsole ptyxis terminator tilix xterm"
+        : "kitty ghostty alacritty foot wezterm konsole ptyxis terminator tilix xterm"
+    function resolveTerm() {
+        termProbe.command = ["sh", "-c", "for t in " + root.termChain + "; do command -v \"$t\" >/dev/null 2>&1 && { echo \"$t\"; break; }; done"];
+        termProbe.running = true;
+    }
+    function termStale(from, to) {
+        // one-shot heads-up when a configured terminal isn't installed on this machine
+        if (!from || from === to) return;
+        Quickshell.execDetached(["notify-send", "-a", "macbar", "macbar", "Terminal \"" + from + "\" isn't installed here — using \"" + to + "\""]);
+    }
+    Process {
+        id: termProbe
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var found = text.trim();
+                if (!found) found = "kitty";     // last resort so a click always at least opens something
+                if (found === root.terminal) return;
+                var from = root.terminal;
+                root.terminal = found;
+                root.termStale(from, found);
             }
         }
     }
@@ -2829,6 +2860,7 @@ Scope {
         barStyle = "liquid"; use24h = false; showDate = true; showSeconds = false; showBatteryPercent = true;
         showTray = true; showSearch = true;
         barLogoMode = "apple"; barCustomLogoPath = "";
+        terminal = "";                          // back to auto-detect
         barWidgets = ["appleMenu", "appMenus", "volume", "keyboard", "reminders", "notifications", "wifi", "bluetooth", "privacy", "controlCenter", "clock"];
         ccControls = ccDefault.slice();
         remShowBadge = true;
@@ -2876,8 +2908,9 @@ Scope {
             root.settingsReady = true;
             if (migrated) saveTimer.restart();      // persist the new widget/tile once, even if nothing else changes
             if (root.barStyle === "liquid") root.startGlass();
+            root.resolveTerm();                     // see termChain: honour a working configured terminal, fall back otherwise
         }
-        onLoadFailed: { root.ccMigRec = true; root.settingsReady = true; if (root.barStyle === "liquid") root.startGlass(); }
+        onLoadFailed: { root.ccMigRec = true; root.settingsReady = true; root.resolveTerm(); if (root.barStyle === "liquid") root.startGlass(); }
     }
 
     // ═════════════ LIQUID GLASS BACKEND (same pipeline as macdock) ═════════════

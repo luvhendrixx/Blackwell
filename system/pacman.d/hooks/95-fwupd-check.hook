@@ -6,4 +6,4 @@ Target = *
 [Action]
 Description = Checking for firmware updates...
 When = PostTransaction
-Exec = /bin/sh -c "/usr/bin/timeout 30 /usr/bin/fwupdmgr get-updates >/dev/null 2>&1 && echo ':: Firmware updates are available! See them with: fwupdmgr get-updates' || true"
+Exec = /usr/local/bin/blackwell-fwupd-check

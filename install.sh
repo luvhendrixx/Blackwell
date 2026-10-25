@@ -256,9 +256,17 @@ if [ "$DRY_RUN" = 0 ] && [ "$LINK_ONLY" = 0 ]; then
 
   # ── Firmware update notice ──────────────────────────────────────────────
   # After each pacman upgrade, tell the user if fwupd (LVFS) has firmware
-  # updates available. It only prints a notice; it never installs anything.
-  say "Installing fwupd firmware-check pacman hook"
-  run sudo install -D -m 644 "$REPO_DIR/system/pacman.d/hooks/95-fwupd-check.hook" /etc/pacman.d/hooks/95-fwupd-check.hook
+  # updates available: a line in the transaction plus a desktop notification.
+  # It only reports; it never installs anything (that's `bw -F`).
+  # The guard keeps machines without fwupd from growing a dead hook that
+  # fails-and-spinner on every upgrade.
+  if command -v fwupdmgr >/dev/null 2>&1; then
+    say "Installing fwupd firmware-check pacman hook"
+    run sudo install -D -m 755 "$REPO_DIR/system/bin/blackwell-fwupd-check" /usr/local/bin/blackwell-fwupd-check
+    run sudo install -D -m 644 "$REPO_DIR/system/pacman.d/hooks/95-fwupd-check.hook" /etc/pacman.d/hooks/95-fwupd-check.hook
+  else
+    warn "fwupd not found — skipping firmware-check hook (install it with: sudo pacman -S fwupd, then re-run install.sh)"
+  fi
 
   # ── MacLock: compile the fragment shaders (liquidglass, burn, …) ───────
   # The QML references "*.frag.qsb" directly. Without them everything drawn

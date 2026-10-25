@@ -58,7 +58,7 @@ Keep all five files in the same folder.
 | Do Not Disturb (Focus) | `dunstctl`, `makoctl` or `swaync-client` (only if you keep one of those) |
 | Emoji search keywords | `emoji-test.txt` from the `unicode-emoji` package (otherwise `EmojiData.js` is used) |
 | Wallpaper detection / applying | one of: Noctalia, `awww`/`swww`, `hyprpaper`, `swaybg`, `wpaperd` — or set a path yourself (see [Wallpaper](#wallpaper)) |
-| Default apps | terminal `kitty`, file opener `xdg-open` — change `terminal`, `launcher`, `filesCmd`, `clipboardCmd` in `~/.config/macbar/settings.json` |
+| Default apps | terminal auto-detected at startup (`kitty` → `ghostty` → `alacritty` → …); pin one with `terminal` in `~/.config/macbar/settings.json`. File opener `xdg-open` — also changeable: `launcher`, `filesCmd`, `clipboardCmd` |
 
 ### Conflicts
 
