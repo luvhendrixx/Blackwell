@@ -101,7 +101,7 @@ export LIBVA_DRIVER_NAME=iHD
 
 
 # ---------- Languages ----------
-export GOPATH=$HOME/go
+export GOPATH=$HOME/.go
 export PATH=$PATH:$GOPATH/bin
 [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env (for Haskell)
 export PATH="$HOME/.cargo/bin:$PATH" # for where to find cargo binaries
