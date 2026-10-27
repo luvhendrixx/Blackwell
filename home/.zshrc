@@ -97,7 +97,7 @@ fzf() {
 
 export EDITOR="nvim"
 export VISUAL="nvim"
-export LIBVA_DRIVER_NAME=iHD
+export LIBVA_DRIVER_NAME=iHD # for intel hardware diagnosis stuff
 
 
 # ---------- Languages ----------
@@ -105,4 +105,4 @@ export GOPATH=$HOME/.go
 export PATH=$PATH:$GOPATH/bin
 [ -f "$HOME/.ghcup/env" ] && . "$HOME/.ghcup/env" # ghcup-env (for Haskell)
 export PATH="$HOME/.cargo/bin:$PATH" # for where to find cargo binaries
-
+export PATH="$HOME/development/.flutter/bin:$PATH" # for flutter stuff
