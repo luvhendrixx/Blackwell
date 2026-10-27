@@ -1,9 +1,9 @@
 [Default Applications]
 inode/directory=org.gnome.Nautilus.desktop
-x-scheme-handler/http=zen.desktop
-x-scheme-handler/https=zen.desktop
+x-scheme-handler/http=helium.desktop
+x-scheme-handler/https=helium.desktop
 x-scheme-handler/chrome=zen.desktop
-text/html=zen.desktop
+text/html=helium.desktop
 application/x-extension-htm=zen.desktop
 application/x-extension-html=zen.desktop
 application/x-extension-shtml=zen.desktop

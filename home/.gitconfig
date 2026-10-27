@@ -40,7 +40,7 @@
     cm = commit -m
     aa = add --all
 
-    lg = log --graph --oneline --decorate --all
+    lg = log -3 --stat
     last = log -1 HEAD --stat -p
 
     discard = restore             # discard unstaged changes in a file
