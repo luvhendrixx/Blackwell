@@ -35,7 +35,7 @@ _A minimal setup focused on a balance of performance, aesthetics, productivity a
 ## Installation
 
 ```bash
-git clone git@github.com:luvhendrixx/Blackwell.git ~/dotfiles
+git clone git@github.com:luvhendrixx/Sur.git ~/dotfiles
 cd ~/dotfiles
 chmod +x install.sh
 ./install.sh
