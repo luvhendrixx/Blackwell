@@ -1,13 +1,13 @@
 <div align="centre">
 
-## Blackwell
+## Sur
 
 _A minimal setup focused on a balance of performance, aesthetics, productivity and a niche balance of keyboard and mouse driven workflows_
 
 </div>
 
 <p align="centre">
-<img src="Assets/blackwell.png" alt="Blackwell preview" width="100%" />
+<img src="Assets/Sur.png" alt="Sur preview" width="100%" />
 </p>
 
 ## TL;DR
@@ -84,7 +84,7 @@ From there **Reboot** and you ought to be good to go.
 | `SUPER + ALT + L`                     | 43PR engine for light/dark toggles               |
 | `SUPER + D`                           | Toggle wallpaper picker                          |
 
-Althogh you can click on the **help** button on the waybar to pull up the full cheetsheet
+Althogh you can click on the **help** button on the waybar to pull up the full cheatsheet
 
 ## BTW
 
@@ -100,11 +100,11 @@ you'll **break symlinks** and well...trust, its not fun at all setting up your s
 
 ## Updates
 
-As an addon, it has its own script, **bw** (Blackwell) that does stuff (see below).
+As an addon, it has its own script, **sur** that does stuff (see below).
 
 ```bash
 Usage:
-bw {flag}
+sur {flag}
 
 Flags:
 -u, --update Full suite (yay + fetch)
@@ -129,13 +129,13 @@ Flags:
 ```bash
 Examples:
 
-bw -u
+sur -u
 
-bw update
+sur update
 
-bw -s
+sur -s
 
-bw -F
+sur -F
 ```
 
 ### Firmware updates
@@ -144,11 +144,11 @@ The setup also keeps an eye on firmware (BIOS/SSD/dock updates from LVFS) so
 it never silently rots behind your package upgrades:
 
 - a **pacman hook** (`95-fwupd-check.hook`, installed by `install.sh`) runs after
-  every `sudo pacman -Syu` / `bw -u` transaction, tells you right in the
+  every `sudo pacman -Syu` / `sur -u` transaction, tells you right in the
   terminal (and with a desktop notification) if firmware updates exist —
   it **never installs anything**, it only reports;
 - `fwupd-refresh.timer` keeps LVFS metadata fresh in the background;
-- `bw -F` is the manual lever: refresh, show what's available, and only
+- `sur -F` is the manual lever: refresh, show what's available, and only
   install when you answer `y`. Firmware updates often want a reboot and a
   decent battery, so the choice stays yours.
 

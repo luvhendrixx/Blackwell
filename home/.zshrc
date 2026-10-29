@@ -6,11 +6,11 @@ fi
 # Starship prompt
 eval "$(starship init zsh)"
 
-# ---------- Blackwell update manager ----------
-blackwell() {
+# ---------- Sur update manager ----------
+sur() {
   bash "$HOME/dotfiles/update.sh" "$@"
 }
-bw() { blackwell "$@"; }
+sur() { blackwell "$@"; }
 
 # ---------- Quality of life ----------
 autoload -U compinit

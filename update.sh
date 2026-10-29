@@ -1,36 +1,40 @@
 #!/usr/bin/env bash
 #
-# Blackwell — dotfiles / system update manager (interactive, mirrors omarchy).
+# Sur — dotfiles / interactive system update manager
 #
 # Usage:
-#   bw -u|--update    full suite: yay + (fetch -> check -> pull) + symlink check
-#   bw -f|--fetch     dotfiles fetch only
-#   bw -F|--firmware  firmware (LVFS/fwupd): refresh, list, optional install
-#   bw -p|--pull      dotfiles pull only
-#   bw -y|--yay       yay/AUR updates only
-#   bw -s|--status    repo status (branch, ahead/behind, dirtiness)
-#   bw -d|--diff      dry run: what would change
-#   bw -l|--log       last few commits
-#   bw -h|--help      help
+#   sur -u|--update    full suite: yay + (fetch -> check -> pull) + symlink check
+#   sur -f|--fetch     dotfiles fetch only
+#   sur -F|--firmware  firmware (LVFS/fwupd): refresh, list, optional install
+#   sur -p|--pull      dotfiles pull only
+#   sur -y|--yay       yay/AUR updates only
+#   sur -s|--status    repo status (branch, ahead/behind, dirtiness)
+#   sur -d|--diff      dry run: what would change
+#   sur -l|--log       last few commits
+#   sur -h|--help      help
 
 set -uo pipefail
 
 REPO_DIR="$HOME/dotfiles"
 
 # ─── colors ──────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-CYAN='\033[0;36m'; BLUE='\033[0;34m'; BOLD='\033[1m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
 NC='\033[0m'
 
-log()   { echo -e "${BOLD}${CYAN}[blackwell]${NC} $*"; }
-warn()  { echo -e "${YELLOW}[warn]${NC}     $*"; }
-err()   { echo -e "${RED}[error]${NC}    $*"; }
-ok()    { echo -e "${GREEN}[ok]${NC}       $*"; }
-sep()   { echo -e "${BLUE}──────────────────────────────────────────────────────────${NC}"; }
+log() { echo -e "${BOLD}${CYAN}[blackwell]${NC} $*"; }
+warn() { echo -e "${YELLOW}[warn]${NC}     $*"; }
+err() { echo -e "${RED}[error]${NC}    $*"; }
+ok() { echo -e "${GREEN}[ok]${NC}       $*"; }
+sep() { echo -e "${BLUE}──────────────────────────────────────────────────────────${NC}"; }
 
 banner() {
   sep
-  echo -e "${BOLD}${GREEN}  BLACKWELL — dotfiles update${NC}"
+  echo -e "${BOLD}${GREEN}  Sur — dotfiles update${NC}"
   sep
   date '+  %a, %d %b %Y %H:%M:%S'
   sep
@@ -38,7 +42,7 @@ banner() {
 
 help() {
   cat <<EOF
-Usage: bw {flag}
+Usage: sur {flag}
 
 Flags:
   -u, --update      Full update suite (yay + fetch + pull + symlink check)
@@ -52,10 +56,10 @@ Flags:
   -h, --help        Show this help
 
 Examples:
-  bw -u          Run the full update suite
-  bw update      Same as -u
-  bw -s          Quick status
-  bw -F          Firmware updates (never auto-installs, always asks)
+  sur -u          Run the full update suite
+  sur update      Same as -u
+  sur -s          Quick status
+  sur -F          Firmware updates (never auto-installs, always asks)
 EOF
 }
 
@@ -175,7 +179,7 @@ do_pull() {
     # check for dirty worktree and auto-stash
     if [[ -n $(cd "$REPO_DIR" && git status --porcelain) ]]; then
       warn "Uncommitted changes detected — stashing automatically"
-      (cd "$REPO_DIR" && git stash push -u -m "bw auto-stash" )
+      (cd "$REPO_DIR" && git stash push -u -m "bw auto-stash")
       STASHED=1
     else
       STASHED=0
@@ -185,7 +189,7 @@ do_pull() {
       do_new_packages "$local_head"
       if [[ $STASHED -eq 1 ]]; then
         log "Restoring stashed changes..."
-        (cd "$REPO_DIR" && git stash pop) || \
+        (cd "$REPO_DIR" && git stash pop) ||
           warn "Stash pop had conflicts — run 'git stash list' to resolve"
       fi
     else
@@ -205,7 +209,7 @@ do_status() {
   (cd "$REPO_DIR" && git fetch --quiet 2>/dev/null || true)
   local branch ahead behind
   branch=$(cd "$REPO_DIR" && git branch --show-current)
-  ahead=$(cd "$REPO_DIR"  && git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
+  ahead=$(cd "$REPO_DIR" && git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)
   behind=$(cd "$REPO_DIR" && git rev-list --count 'HEAD..@{u}' 2>/dev/null || echo 0)
   echo -e "${BOLD}Branch:${NC}   $branch"
   echo -e "${BOLD}Ahead:${NC}    $ahead"
@@ -255,7 +259,7 @@ do_new_packages() {
   added_aur=$(comm -13 \
     <(git show "$old_head:packages-aur.txt" 2>/dev/null | grep -vE '^[[:space:]]*(#|$)' | sort -u) \
     <(grep -vE '^[[:space:]]*(#|$)' packages-aur.txt 2>/dev/null | sort -u) || true)
-  cd - > /dev/null
+  cd - >/dev/null
 
   all_new=$(printf '%s\n' $added_repo $added_aur | tr '\n' ' ')
   if [[ -z ${all_new// /} ]]; then
@@ -268,7 +272,7 @@ do_new_packages() {
   local sync_db
   sync_db=$(pacman -Slq 2>/dev/null)
   for p in $added_repo $added_aur; do
-    if grep -qxF "$p" <<< "$sync_db"; then
+    if grep -qxF "$p" <<<"$sync_db"; then
       repo_pkgs="$repo_pkgs $p"
     else
       strays="$strays $p"
@@ -281,8 +285,10 @@ do_new_packages() {
   fi
   if [[ -n ${strays// /} ]]; then
     local helper
-    if command -v yay >/dev/null 2>&1; then helper=yay
-    elif command -v paru >/dev/null 2>&1; then helper=paru
+    if command -v yay >/dev/null 2>&1; then
+      helper=yay
+    elif command -v paru >/dev/null 2>&1; then
+      helper=paru
     else
       warn "No AUR helper found — install these manually: $strays"
       return 0
@@ -313,41 +319,41 @@ STASHED=0
 rc=0
 
 case "${1:-}" in
-  -u|--update|update)
-    do_yay || rc=1
-    do_pull || rc=1
-    check_broken_symlinks
-    ;;
-  -f|--fetch)
-    do_fetch || rc=1
-    ;;
-  -F|--firmware|firmware)
-    do_firmware || rc=1
-    ;;
-  -p|--pull)
-    do_pull || rc=1
-    check_broken_symlinks
-    ;;
-  -y|--yay)
-    do_yay || rc=1
-    ;;
-  -s|--status)
-    do_status
-    ;;
-  -d|--diff)
-    do_diff
-    ;;
-  -l|--log)
-    do_log
-    ;;
-  -h|--help|"")
-    help
-    ;;
-  *)
-    err "Unknown argument: $1"
-    help
-    exit 1
-    ;;
+-u | --update | update)
+  do_yay || rc=1
+  do_pull || rc=1
+  check_broken_symlinks
+  ;;
+-f | --fetch)
+  do_fetch || rc=1
+  ;;
+-F | --firmware | firmware)
+  do_firmware || rc=1
+  ;;
+-p | --pull)
+  do_pull || rc=1
+  check_broken_symlinks
+  ;;
+-y | --yay)
+  do_yay || rc=1
+  ;;
+-s | --status)
+  do_status
+  ;;
+-d | --diff)
+  do_diff
+  ;;
+-l | --log)
+  do_log
+  ;;
+-h | --help | "")
+  help
+  ;;
+*)
+  err "Unknown argument: $1"
+  help
+  exit 1
+  ;;
 esac
 
 exit "$rc"
