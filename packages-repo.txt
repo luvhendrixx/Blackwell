@@ -92,6 +92,7 @@ ttf-liberation
 tumbler
 ufw
 unzip
+code
 uwsm
 vim
 vpl-gpu-rt

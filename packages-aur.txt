@@ -17,8 +17,7 @@ python-hyprland-monitors
 python-hyprland-schema
 python-hyprland-socket
 python-hyprland-state
-visual-studio-code-bin
-vscodium-bin
+
 yay
 auto-cpufreq
 odin
@@ -30,3 +29,4 @@ omasnap-bin
 spotify
 zen-browser-bin
 helium-browser-bin
+
