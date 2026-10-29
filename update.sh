@@ -26,7 +26,7 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-log() { echo -e "${BOLD}${CYAN}[blackwell]${NC} $*"; }
+log() { echo -e "${BOLD}${CYAN}[Sur]${NC} $*"; }
 warn() { echo -e "${YELLOW}[warn]${NC}     $*"; }
 err() { echo -e "${RED}[error]${NC}    $*"; }
 ok() { echo -e "${GREEN}[ok]${NC}       $*"; }

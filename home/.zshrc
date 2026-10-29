@@ -10,7 +10,6 @@ eval "$(starship init zsh)"
 sur() {
   bash "$HOME/dotfiles/update.sh" "$@"
 }
-sur() { blackwell "$@"; }
 
 # ---------- Quality of life ----------
 autoload -U compinit
